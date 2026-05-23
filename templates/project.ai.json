@@ -1,0 +1,13 @@
+{
+  "name": "{{projectName}}",
+  "version": 1,
+  "type": "{{type}}",
+  "category": "{{category}}",
+  "architecture": "{{architecture}}",
+  "testing": "{{testing}}",
+  "logging": "{{logging}}",
+  "registry": "local",
+  "instructions": [".ai/instructions/getting-started.md"],
+  "skills": [".ai/skills/default.md"],
+  "agents": [".ai/agents/default.json"]
+}

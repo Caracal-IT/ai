@@ -7,40 +7,129 @@ const { execFileSync } = require('node:child_process');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
-test('setup creates the AI manifest and starter assets', () => {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-setup-'));
-  const output = execFileSync(process.execPath, [cliPath, 'setup', projectDir], {
+/* ─────────────────────────────────────────────────────────────────────────────
+   init command
+   ──────────────────────────────────────────────────────────────────────────── */
+
+test('init creates .ai/ and .github/ structure', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-'));
+  const output = execFileSync(process.execPath, [cliPath, 'init', projectDir], {
     encoding: 'utf8',
   });
 
-  assert.match(output, /AI environment ready/);
+  assert.match(output, /AI workspace ready/);
 
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(projectDir, 'ai.config.json'), 'utf8'),
-  );
+  // .ai/ source-of-truth files
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', 'getting-started.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'default.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'agents', 'default.json')), true);
 
-  assert.deepEqual(manifest.instructions, ['instructions/getting-started.md']);
-  assert.deepEqual(manifest.skills, ['skills/default.json']);
-  assert.deepEqual(manifest.agents, ['agents/default.json']);
-  assert.equal(
-    fs.existsSync(path.join(projectDir, 'instructions', 'getting-started.md')),
-    true,
+  // .github/ generated layer
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'copilot-instructions.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
+
+  // README
+  assert.equal(fs.existsSync(path.join(projectDir, 'README.md')), true);
+
+  // project.ai.json must be valid JSON with expected fields
+  const config = JSON.parse(
+    fs.readFileSync(path.join(projectDir, '.ai', 'project.ai.json'), 'utf8'),
   );
-  assert.equal(fs.existsSync(path.join(projectDir, 'skills', 'default.json')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, 'agents', 'default.json')), true);
+  assert.equal(config.version, 1);
+  assert.ok(config.type);
+  assert.ok(Array.isArray(config.instructions));
+  assert.ok(Array.isArray(config.skills));
+  assert.ok(Array.isArray(config.agents));
 });
 
-test('setup preserves existing files when run again', () => {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-setup-existing-'));
-  const instructionPath = path.join(projectDir, 'instructions', 'getting-started.md');
+test('init preserves existing files when run again', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-existing-'));
+  const instructionPath = path.join(
+    projectDir,
+    '.ai',
+    'instructions',
+    'getting-started.md',
+  );
 
+  // Pre-create the file with custom content
   fs.mkdirSync(path.dirname(instructionPath), { recursive: true });
-  fs.writeFileSync(instructionPath, '# Custom instruction\n', 'utf8');
+  fs.writeFileSync(instructionPath, '# My custom instruction\n', 'utf8');
 
-  const output = execFileSync(process.execPath, [cliPath, 'setup', projectDir], {
+  const output = execFileSync(process.execPath, [cliPath, 'init', projectDir], {
     encoding: 'utf8',
   });
 
-  assert.match(output, /Skipped existing 1 file\(s\)\.|Skipped existing [1-9]\d* file\(s\)\./);
-  assert.equal(fs.readFileSync(instructionPath, 'utf8'), '# Custom instruction\n');
+  assert.match(output, /Skipped existing [1-9]\d* file\(s\)\./);
+  assert.equal(fs.readFileSync(instructionPath, 'utf8'), '# My custom instruction\n');
+});
+
+test('init defaults to current directory when no target given', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-cwd-'));
+  const output = execFileSync(process.execPath, [cliPath, 'init'], {
+    encoding: 'utf8',
+    cwd: projectDir,
+  });
+
+  assert.match(output, /AI workspace ready/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   generate / update command
+   ──────────────────────────────────────────────────────────────────────────── */
+
+test('generate rebuilds .github/ from .ai/', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-generate-'));
+
+  // Initialise first
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  // Remove the generated layer to verify generate recreates it
+  fs.rmSync(path.join(projectDir, '.github'), { recursive: true, force: true });
+
+  const output = execFileSync(
+    process.execPath,
+    [cliPath, 'generate', projectDir],
+    { encoding: 'utf8' },
+  );
+
+  assert.match(output, /\.github\/ regenerated/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'copilot-instructions.md')), true);
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   setup alias (backward compat / deprecated)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+test('setup alias still works and prints deprecation warning', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-setup-compat-'));
+  const { spawnSync } = require('node:child_process');
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'setup', projectDir],
+    { encoding: 'utf8' },
+  );
+
+  const combined = result.stdout + result.stderr;
+  assert.match(combined, /deprecated/i);
+  assert.match(result.stdout, /AI workspace ready/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   unknown command
+   ──────────────────────────────────────────────────────────────────────────── */
+
+test('unknown command exits with code 1', () => {
+  let threw = false;
+  try {
+    execFileSync(process.execPath, [cliPath, 'foobar'], { encoding: 'utf8' });
+  } catch (err) {
+    threw = true;
+    assert.equal(err.status, 1);
+  }
+  assert.equal(threw, true);
 });
