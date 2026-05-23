@@ -6,7 +6,7 @@ instructions, skills, and agents in a single command.
 ## Usage
 
 ```bash
-npx @caracal-it/ai setup
+npx github:Caracal-IT/ai setup
 ```
 
 The setup command creates:
@@ -19,5 +19,5 @@ The setup command creates:
 You can also target a different directory:
 
 ```bash
-npx @caracal-it/ai setup ./my-project
+npx github:Caracal-IT/ai setup ./my-project
 ```
