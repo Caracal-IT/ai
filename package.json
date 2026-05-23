@@ -1,0 +1,31 @@
+{
+  "name": "@caracal-it/ai",
+  "version": "1.0.0",
+  "description": "npm-style CLI for bootstrapping AI instructions, skills, and agents",
+  "main": "lib/setup.js",
+  "bin": {
+    "ai": "./bin/ai.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Caracal-IT/ai.git"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "setup",
+    "skills",
+    "agents",
+    "instructions"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Caracal-IT/ai/issues"
+  },
+  "homepage": "https://github.com/Caracal-IT/ai#readme"
+}
