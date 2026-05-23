@@ -6,8 +6,7 @@ instructions, skills, and agents in a single command.
 ## Usage
 
 ```bash
-npm install
-node ./bin/ai.js setup
+npx @caracal-it/ai setup
 ```
 
 The setup command creates:
@@ -20,5 +19,5 @@ The setup command creates:
 You can also target a different directory:
 
 ```bash
-node ./bin/ai.js setup ./my-project
+npx @caracal-it/ai setup ./my-project
 ```
