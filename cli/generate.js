@@ -87,6 +87,18 @@ function addTrackedPath(entries, relPath) {
   }
 }
 
+function compactTrackedEntries(entries = []) {
+  const sorted = [...new Set(entries.map((entry) => toPosixPath(entry)))].sort();
+  const compacted = [];
+
+  for (const entry of sorted) {
+    if (matchesTrackedEntry(entry, compacted)) continue;
+    compacted.push(entry);
+  }
+
+  return compacted;
+}
+
 function listFilesRecursive(dirPath, prefix = '') {
   const files = [];
   if (!fs.existsSync(dirPath)) return files;
@@ -322,8 +334,8 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
       addTrackedPath(managedSet, path.posix.join('.github', group, f));
     }
   }
-  const excluded = [...excludedSet].sort();
-  const managed = [...managedSet].sort();
+  const excluded = compactTrackedEntries([...excludedSet]);
+  const managed = compactTrackedEntries([...managedSet]);
 
   // Persist the config with the accurate excluded + managed lists.
   writeFile(configAbs, buildProjectConfig(projectName, typeKey, { selections, excluded, managed }));
@@ -364,6 +376,7 @@ module.exports = {
   listGithubFiles,
   matchesTrackedEntry,
   normalizeSelections,
+  compactTrackedEntries,
   resolveConfigPath,
   syncProject,
 };
