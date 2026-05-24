@@ -43,11 +43,11 @@ test('src markdown items include required front matter fields', () => {
 
     assert.ok(frontMatter, `${rel} is missing front matter`);
 
-    if (rel.includes('/instructions/')) {
+    if (rel.startsWith('instructions/') || rel.includes('/instructions/')) {
       assert.ok(frontMatter.applyTo, `${rel} is missing applyTo`);
     }
 
-    if (rel.includes('/skills/')) {
+    if (rel.startsWith('skills/') || rel.includes('/skills/')) {
       assert.ok(frontMatter.name, `${rel} is missing name`);
       assert.ok(frontMatter.description, `${rel} is missing description`);
     }
