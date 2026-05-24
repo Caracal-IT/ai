@@ -320,14 +320,15 @@ test('init records pre-existing .github/ files in excluded list', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-excluded-'));
 
   // Place a pre-existing file in .github/ before init
-  const preExistingFile = path.join(projectDir, '.github', 'copilot-instructions.md');
+  const preExistingFile = path.join(projectDir, '.github', 'manual', 'copilot-instructions.md');
   fs.mkdirSync(path.dirname(preExistingFile), { recursive: true });
   fs.writeFileSync(preExistingFile, '# Pre-existing\n', 'utf8');
 
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
-  assert.ok(config.excluded.includes('.github/copilot-instructions.md'), 'pre-existing file must be excluded');
+  assert.ok(config.excluded.includes('.github/manual/'), 'pre-existing folder must be excluded');
+  assert.ok(config.excluded.includes('.github/manual/copilot-instructions.md'), 'pre-existing file must be excluded');
   // The pre-existing file must not be modified
   assert.equal(fs.readFileSync(preExistingFile, 'utf8'), '# Pre-existing\n');
 });
@@ -339,6 +340,10 @@ test('init records generated .github/ files in managed list', () => {
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
   assert.ok(Array.isArray(config.managed));
   assert.ok(config.managed.length > 0, 'managed list must be non-empty after init');
+  assert.ok(
+    config.managed.includes('.github/skills/feature-documentation/'),
+    'managed list must include generated folders',
+  );
   assert.ok(
     config.managed.every((f) => f.startsWith('.github/')),
     'all managed entries must be under .github/',
@@ -383,6 +388,71 @@ test('update adds unknown .github/ files to excluded in non-TTY mode', () => {
     'unknown file must be added to excluded list',
   );
   assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
+});
+
+test('update preserves excluded folders inside managed .github directories', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-excluded-folder-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const manualFile = path.join(projectDir, '.github', 'skills', 'manual', 'SKILL.md');
+  fs.mkdirSync(path.dirname(manualFile), { recursive: true });
+  fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
+
+  const configPath = path.join(projectDir, 'project.ai.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.excluded = ['.github/skills/manual/'];
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  const updated = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  assert.equal(fs.existsSync(manualFile), true, 'excluded folder contents must stay untouched');
+  assert.equal(fs.readFileSync(manualFile, 'utf8'), '# Manual\n');
+  assert.ok(updated.excluded.includes('.github/skills/manual/'));
+  assert.equal(
+    updated.excluded.includes('.github/skills/manual/SKILL.md'),
+    false,
+    'folder exclusions must be honored without expanding to every child file',
+  );
+});
+
+test('update removes git-tracked managed files when managed entry is stored as a folder', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-managed-folder-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const catalog = getSourceCatalog();
+  const category = catalog.categories.find((entry) => entry.items.some((item) => item.files.skills.length > 0));
+  assert.ok(category);
+  const item = category.items.find((entry) => entry.files.skills.length > 0);
+  assert.ok(item);
+  const selectedFile = item.files.skills[0];
+  assert.ok(selectedFile);
+
+  const configPath = path.join(projectDir, 'project.ai.json');
+  let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.selections = { [category.key]: [item.key] };
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  const managedRel = githubManagedPath('skills', selectedFile).split(path.sep).join('/');
+  const managedFolderRel = `${path.posix.dirname(managedRel)}/`;
+  const managedFilePath = path.join(projectDir, managedRel);
+  assert.equal(fs.existsSync(managedFilePath), true, 'file must exist after selection');
+
+  execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
+  execFileSync('git', ['add', '-f', '--', managedRel], { cwd: projectDir, stdio: 'ignore' });
+
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.selections = { [category.key]: [] };
+  config.managed = [managedFolderRel];
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  assert.equal(
+    fs.existsSync(managedFilePath),
+    false,
+    'folder-based managed entries must still remove deselected tracked files',
+  );
 });
 
 test('backward compat: generate still works when only legacy .ai/project.ai.json exists', () => {

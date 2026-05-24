@@ -2,7 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { detect } = require('./detect');
 const { runWizard } = require('./wizard');
-const { generateProject, normalizeSelections, resolveConfigPath, listGithubFiles } = require('./generate');
+const {
+  addTrackedPath,
+  generateProject,
+  listGithubFiles,
+  matchesTrackedEntry,
+  normalizeSelections,
+  resolveConfigPath,
+} = require('./generate');
 const { getSourceCatalog } = require('./catalog');
 const { writeFile } = require('../lib/fs');
 const { createRL, confirm } = require('../lib/prompts');
@@ -34,28 +41,30 @@ async function update(targetDir) {
 
   // Find files in .github/ that are neither managed by the tool nor already
   // in the excluded list, and ask the user what to do with each one.
-  const managedSet = new Set(result.managed);
-  const excludedSet = new Set(result.excluded);
+  const managedEntries = result.managed;
+  const excludedEntries = result.excluded;
   const unknown = listGithubFiles(targetDir).filter(
-    (f) => !managedSet.has(f) && !excludedSet.has(f),
+    (f) => !matchesTrackedEntry(f, managedEntries) && !matchesTrackedEntry(f, excludedEntries),
   );
 
   if (unknown.length > 0) {
     const rl = createRL();
-    const newExcluded = [...result.excluded];
+    const newExcludedSet = new Set(result.excluded);
     try {
       for (const file of unknown) {
+        if (matchesTrackedEntry(file, [...newExcludedSet])) continue;
         const shouldDelete = await confirm(rl, `Delete ${file}?`, false);
         if (shouldDelete) {
           fs.rmSync(path.join(targetDir, file), { force: true });
         } else {
-          newExcluded.push(file);
+          addTrackedPath(newExcludedSet, file);
         }
       }
     } finally {
       rl.close();
     }
 
+    const newExcluded = [...newExcludedSet].sort();
     if (newExcluded.length !== result.excluded.length) {
       // Persist the updated excluded list.
       const rootConfigPath = path.join(targetDir, 'project.ai.json');

@@ -6,6 +6,7 @@ const { readme } = require('../lib/templates');
 const { getSourceCatalog } = require('./catalog');
 
 const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
+const MANAGED_GROUP_ROOTS = new Set(MANAGED_GROUPS.map((group) => path.posix.join('.github', group)));
 
 // Config lives at the project root; fall back to the legacy .ai/ location.
 const CONFIG_REL = 'project.ai.json';
@@ -51,6 +52,39 @@ function buildProjectConfig(projectName, typeKey, config = {}) {
     null,
     2,
   ) + '\n';
+}
+
+function toPosixPath(relPath) {
+  return relPath.split(path.sep).join('/');
+}
+
+function normalizeTrackedPath(relPath) {
+  return toPosixPath(relPath).replace(/\/+$/, '');
+}
+
+function matchesTrackedEntry(relPath, entries = []) {
+  const normalizedPath = normalizeTrackedPath(relPath);
+
+  return entries.some((entry) => {
+    const normalizedEntry = normalizeTrackedPath(entry);
+    return normalizedEntry.length > 0
+      && (normalizedPath === normalizedEntry || normalizedPath.startsWith(`${normalizedEntry}/`));
+  });
+}
+
+function addTrackedPath(entries, relPath) {
+  const normalizedPath = normalizeTrackedPath(relPath);
+  if (!normalizedPath) return;
+
+  entries.add(normalizedPath);
+
+  let currentDir = path.posix.dirname(normalizedPath);
+  while (currentDir && currentDir !== '.' && currentDir !== '.github') {
+    if (!MANAGED_GROUP_ROOTS.has(currentDir)) {
+      entries.add(`${currentDir}/`);
+    }
+    currentDir = path.posix.dirname(currentDir);
+  }
 }
 
 function listFilesRecursive(dirPath, prefix = '') {
@@ -126,11 +160,15 @@ function githubTargetRelFor(group, relFile) {
   return path.posix.join('.github', group, relFile);
 }
 
-function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipped) {
+function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipped, excluded = []) {
   for (const group of MANAGED_GROUPS) {
     for (const relFile of files[group]) {
       const content = fs.readFileSync(path.join(sourceDir, group, relFile), 'utf8');
       const targetRel = githubTargetRelFor(group, relFile);
+      if (matchesTrackedEntry(targetRel, excluded)) {
+        skipped.push(targetRel);
+        continue;
+      }
       const targetAbs = path.join(targetDir, targetRel);
       const wrote = overwrite
         ? (writeFile(targetAbs, content), true)
@@ -180,9 +218,8 @@ function removeEmptyDirectories(dirPath) {
   }
 }
 
-function clearManagedGithubDirectories(targetDir, previouslyManaged = []) {
+function clearManagedGithubDirectories(targetDir, previouslyManaged = [], excluded = []) {
   const insideGitRepo = isGitRepository(targetDir);
-  const previouslyManagedSet = new Set(previouslyManaged);
 
   for (const group of MANAGED_GROUPS) {
     const groupDir = path.join(targetDir, '.github', group);
@@ -196,10 +233,11 @@ function clearManagedGithubDirectories(targetDir, previouslyManaged = []) {
     const files = listFilesRecursive(groupDir);
     for (const relFile of files) {
       const relPath = path.posix.join('.github', group, relFile);
+      if (matchesTrackedEntry(relPath, excluded)) continue;
       // Always remove files that were previously managed by this tool, even if
       // they have since been committed to git. Only preserve git-tracked files
       // that the tool did not create (user-owned files).
-      if (!previouslyManagedSet.has(relPath) && isGitTrackedFile(targetDir, relPath)) continue;
+      if (!matchesTrackedEntry(relPath, previouslyManaged) && isGitTrackedFile(targetDir, relPath)) continue;
       fs.rmSync(path.join(groupDir, relFile), { force: true });
     }
 
@@ -224,11 +262,15 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   const catalog = getSourceCatalog();
 
   // Carry forward any files the user has already excluded from management.
-  const excluded = Array.isArray(config.excluded) ? [...config.excluded] : [];
+  const excludedSet = new Set(
+    Array.isArray(config.excluded) ? config.excluded.map((entry) => toPosixPath(entry)) : [],
+  );
 
   // Files previously owned by this tool — used to safely remove them on
   // overwrite even when they have been committed to git.
-  const previouslyManaged = Array.isArray(config.managed) ? config.managed : [];
+  const previouslyManaged = Array.isArray(config.managed)
+    ? config.managed.map((entry) => toPosixPath(entry))
+    : [];
 
   // On the very first init (no overwrite, no existing config) record every
   // file already present in .github/ so we never touch them automatically.
@@ -236,12 +278,12 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   if (isFirstInit) {
     const preExisting = listGithubFiles(targetDir);
     for (const f of preExisting) {
-      if (!excluded.includes(f)) excluded.push(f);
+      addTrackedPath(excludedSet, f);
     }
   }
 
   if (overwrite) {
-    clearManagedGithubDirectories(targetDir, previouslyManaged);
+    clearManagedGithubDirectories(targetDir, previouslyManaged, [...excludedSet]);
   }
 
   const selections = normalizeSelections(catalog, config.selections || {});
@@ -250,7 +292,11 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   const configAbs = path.join(targetDir, CONFIG_REL);
   // Placeholder config first; we will rewrite it at the end with the
   // accurate `managed` list.
-  const configContent = buildProjectConfig(projectName, typeKey, { selections, excluded, managed: [] });
+  const configContent = buildProjectConfig(projectName, typeKey, {
+    selections,
+    excluded: [...excludedSet].sort(),
+    managed: [],
+  });
   const configWrote = overwrite
     ? (writeFile(configAbs, configContent), true)
     : ensureFile(configAbs, configContent);
@@ -258,25 +304,27 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   else skipped.push(CONFIG_REL);
 
   const requiredDir = path.join(catalog.sourceRoot, 'required');
-  copyItemToGithub(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
+  copyItemToGithub(targetDir, requiredDir, catalog.required, overwrite, created, skipped, [...excludedSet]);
 
   for (const category of catalog.categories) {
     const selected = new Set(selections[category.key] || []);
     for (const item of category.items) {
       if (!selected.has(item.key)) continue;
-      copyItemToGithub(targetDir, item.sourceDir, item.files, overwrite, created, skipped);
+      copyItemToGithub(targetDir, item.sourceDir, item.files, overwrite, created, skipped, [...excludedSet]);
     }
   }
 
   // Build the authoritative managed list from what is now in the managed
   // group directories under .github/.
-  const managed = [];
+  const managedSet = new Set();
   for (const group of MANAGED_GROUPS) {
     const groupDir = path.join(targetDir, '.github', group);
     for (const f of listFilesRecursive(groupDir)) {
-      managed.push(path.posix.join('.github', group, f));
+      addTrackedPath(managedSet, path.posix.join('.github', group, f));
     }
   }
+  const excluded = [...excludedSet].sort();
+  const managed = [...managedSet].sort();
 
   // Persist the config with the accurate excluded + managed lists.
   writeFile(configAbs, buildProjectConfig(projectName, typeKey, { selections, excluded, managed }));
@@ -311,4 +359,12 @@ async function syncProject(targetDir) {
   return generateProject(targetDir, projectName, typeKey, config, { overwrite: true });
 }
 
-module.exports = { generateProject, syncProject, normalizeSelections, resolveConfigPath, listGithubFiles };
+module.exports = {
+  addTrackedPath,
+  generateProject,
+  listGithubFiles,
+  matchesTrackedEntry,
+  normalizeSelections,
+  resolveConfigPath,
+  syncProject,
+};
