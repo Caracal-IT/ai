@@ -10,13 +10,13 @@ selected items into `.ai/` first, then generates `.github/` from `.ai/`.
 bin/          CLI entry point
 cli/          Command modules (init, detect, wizard, generate, sync, update)
 lib/          Shared utilities (fs, prompts, templates, project-type)
-src/          Wizard source content (Required + category/item folders)
+src/          Wizard source content (required + category/item folders)
 test/         Automated tests
 ```
 
 ## Source Layout (`src/`)
 
-- `src/Required/` → always copied into `.ai/` and `.github/`
+- `src/required/` → always copied into `.ai/` and `.github/`
 - `src/<category>/<item>/` → wizard sections and selectable items
 - Each item can contain:
   - `instructions/**`
@@ -27,7 +27,7 @@ Example:
 
 ```
 src/
-├── Required/
+├── required/
 │   ├── instructions/
 │   ├── skills/
 │   └── agents/
@@ -64,7 +64,7 @@ npx github:Caracal-IT/ai update
 2. Creates `.ai/` first.
 3. Reads `src/` folder structure (no hard-coded wizard structure).
 4. Prompts by category and lets users select items via checkbox controls.
-5. Copies `src/Required` and selected category items into `.ai/`.
+5. Copies `src/required` and selected category items into `.ai/`.
 6. Compiles `.github/{instructions,skills,agents}` from `.ai/`.
 7. Updates `.gitignore` to ignore copied generated `.github` AI files.
 8. Creates project `README.md`.

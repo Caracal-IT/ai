@@ -46,7 +46,7 @@ function hasManagedFiles(files) {
 }
 
 function getSourceCatalog(sourceRoot = path.resolve(__dirname, '..', 'src')) {
-  const requiredDir = path.join(sourceRoot, 'Required');
+  const requiredDir = path.join(sourceRoot, 'required');
   const required = filesForItem(requiredDir);
   const categories = [];
 
@@ -56,7 +56,7 @@ function getSourceCatalog(sourceRoot = path.resolve(__dirname, '..', 'src')) {
 
   for (const categoryEntry of fs.readdirSync(sourceRoot, { withFileTypes: true })) {
     if (!categoryEntry.isDirectory()) continue;
-    if (categoryEntry.name === 'Required') continue;
+    if (categoryEntry.name === 'required') continue;
     if (LEGACY_DIRS.has(categoryEntry.name)) continue;
 
     const categoryPath = path.join(sourceRoot, categoryEntry.name);

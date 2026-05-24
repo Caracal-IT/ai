@@ -228,7 +228,7 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   if (configWrote) created.push(configRel);
   else skipped.push(configRel);
 
-  const requiredDir = path.join(catalog.sourceRoot, 'Required');
+  const requiredDir = path.join(catalog.sourceRoot, 'required');
   copyItemToAi(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
 
   for (const category of catalog.categories) {
