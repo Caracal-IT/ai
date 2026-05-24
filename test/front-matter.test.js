@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const { parseFrontMatter } = require('../test-helpers/front-matter');
 
 function collectMarkdownFiles(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -15,21 +16,6 @@ function collectMarkdownFiles(dir) {
     }
   }
   return files;
-}
-
-function parseFrontMatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!match) return null;
-  const result = {};
-  for (const rawLine of match[1].split(/\r?\n/)) {
-    const line = rawLine.replace(/\r$/, '');
-    const separator = line.indexOf(':');
-    if (separator === -1) continue;
-    const key = line.slice(0, separator).trim();
-    const value = line.slice(separator + 1).trim().replace(/^"|"$/g, '');
-    result[key] = value;
-  }
-  return result;
 }
 
 test('src markdown items include required front matter fields', () => {

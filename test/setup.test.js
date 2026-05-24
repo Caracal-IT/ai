@@ -5,22 +5,9 @@ const path = require('node:path');
 const test = require('node:test');
 const { execFileSync } = require('node:child_process');
 const { getSourceCatalog } = require('../cli/catalog');
+const { parseFrontMatter } = require('../test-helpers/front-matter');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
-
-function parseFrontMatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  if (!match) return null;
-  const result = {};
-  for (const rawLine of match[1].split(/\r?\n/)) {
-    const separator = rawLine.indexOf(':');
-    if (separator === -1) continue;
-    const key = rawLine.slice(0, separator).trim();
-    const value = rawLine.slice(separator + 1).trim().replace(/^"|"$/g, '');
-    result[key] = value;
-  }
-  return result;
-}
 
 function githubManagedPath(fileGroup, relFile) {
   const parts = relFile.split('/');
