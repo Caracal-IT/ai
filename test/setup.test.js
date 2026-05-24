@@ -380,7 +380,7 @@ test('ensureGitignore removes old .github/ ignore entries for source control', (
   assert.match(gitignore, /node_modules\//);
 });
 
-test('update adds unknown .github/ files to excluded in non-TTY mode', () => {
+test('update adds unknown .github/ files to excluded automatically', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-unknown-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
@@ -391,7 +391,7 @@ test('update adds unknown .github/ files to excluded in non-TTY mode', () => {
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
-  // In non-TTY mode the default answer to "Delete?" is false → file stays and gets excluded
+  // Unknown files are automatically added to excluded and never deleted.
   assert.ok(
     config.excluded.includes('.github/copilot-instructions.md'),
     'unknown file must be added to excluded list',
