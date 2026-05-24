@@ -13,7 +13,7 @@
 - [x] Keep `generate` and add interactive `update` with pre-marked installed items.
 - [x] Add a required `feature-documentation` skill with a `.feature.md` demo template.
 - [x] Place `project.ai.json` at the project root (not inside `.ai/`).
-- [x] Track `excluded` (pre-existing / user-kept `.github/` files) and `managed` (tool-owned) lists in `project.ai.json`.
+- [x] Track `excluded` (pre-existing / user-kept `.github/` files or folders) and `managed` (tool-owned files or folders) lists in `project.ai.json`.
 - [x] Remove `.github/{instructions,skills,agents}/` from `.gitignore` so all `.github/` files are source-controlled.
 - [x] During `update`: prompt about unknown `.github/` files — delete or add to `excluded`.
 
@@ -26,7 +26,7 @@
 - [x] `init` generates `.github/` directly from selected `src/` items.
 - [x] `src/required` content is always installed.
 - [x] Running `update` pre-marks installed items and recopies marked selections.
-- [x] Files already in `.github/` when `init` runs are recorded as `excluded` and never modified.
+- [x] Files or folders already in `.github/` when `init` runs are recorded as `excluded` and never modified.
 - [x] All `.github/` files are source-controlled (not in `.gitignore`).
 - [x] `update` asks about unknown `.github/` files and adds them to `excluded` if the user says no to deletion.
 - [x] `project.ai.json` lives at the project root for easy discovery.
@@ -37,8 +37,8 @@
 - [x] `init [dir]` creates `project.ai.json` at the project root with `excluded`, `managed`, `version: 3`.
 - [x] `init [dir]` does not create a `.ai/` folder.
 - [x] `init [dir]` generates `.github/instructions/`, `.github/skills/`, `.github/agents/` from `src/` selections.
-- [x] `init [dir]` records pre-existing `.github/` files in `excluded` (does not modify them).
-- [x] `init [dir]` records generated `.github/` files in `managed`.
+- [x] `init [dir]` records pre-existing `.github/` files/folders in `excluded` (does not modify them).
+- [x] `init [dir]` records generated `.github/` files/folders in `managed`.
 - [x] `init [dir]` removes `.github/{instructions,skills,agents}/` ignore lines from `.gitignore` if present.
 - [x] Backward-compat: `generate [dir]` falls back to `.ai/project.ai.json` when no root config exists.
 - [x] Wizard structure is read from filesystem and not hard-coded.
