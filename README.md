@@ -73,7 +73,7 @@ Invoke-RestMethod https://raw.githubusercontent.com/Caracal-IT/ai/main/setup.ps1
 Or fix it once manually:
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:APPDATA\npm" | Out-Null
+mkdir "$env:APPDATA\npm"
 npx github:Caracal-IT/ai init ./my-project
 ```
 
