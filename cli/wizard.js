@@ -11,10 +11,6 @@ const { PROJECT_TYPES, PROJECT_TYPE_KEYS } = require('../lib/project-type');
 async function runWizard(detectedType, catalog, defaults = {}) {
   const interactive = process.stdin.isTTY;
 
-  if (interactive && typeof console.clear === 'function') {
-    console.clear();
-  }
-
   const rl = createRL();
 
   try {
