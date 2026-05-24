@@ -70,8 +70,8 @@ npx github:Caracal-IT/ai update
 8. Creates project `README.md`.
 
 Required starter content includes a `feature-documentation` skill for creating
-and updating `docs/.../*.feature.md` files, plus an example template at
-`docs/features/feature-template.feature.md`.
+and updating `docs/.../*.feature.md` files. `init` does not scaffold a
+`docs/` directory or `docs/features/feature-template.feature.md` by default.
 
 ## What `update` does
 
