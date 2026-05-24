@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -13,4 +14,16 @@ test('source catalog includes kotlin language best-practices item', () => {
   const kotlinItem = languageCategory.items.find((item) => item.key === 'kotlin');
   assert.ok(kotlinItem);
   assert.deepEqual(kotlinItem.files.instructions, ['kotlin.best-practices.instructions.md']);
+});
+
+test('source catalog excludes removed legacy root directories', () => {
+  const srcRoot = path.resolve(__dirname, '..', 'src');
+  const catalog = getSourceCatalog(srcRoot);
+
+  assert.equal(fs.existsSync(path.join(srcRoot, 'instructions')), false);
+  assert.equal(fs.existsSync(path.join(srcRoot, 'skills')), false);
+  assert.equal(fs.existsSync(path.join(srcRoot, 'agents')), false);
+  assert.equal(catalog.categories.some((category) => category.key === 'instructions'), false);
+  assert.equal(catalog.categories.some((category) => category.key === 'skills'), false);
+  assert.equal(catalog.categories.some((category) => category.key === 'agents'), false);
 });

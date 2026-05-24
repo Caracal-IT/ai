@@ -2,7 +2,7 @@ const https = require('node:https');
 const { CAPABILITIES } = require('../lib/templates');
 
 const REGISTRY_BASE =
-  'https://raw.githubusercontent.com/Caracal-IT/ai/main/src/skills';
+  'https://raw.githubusercontent.com/Caracal-IT/ai/main/src/capabilities';
 
 /**
  * Attempt to fetch a skill file from the GitHub registry.
@@ -13,7 +13,7 @@ const REGISTRY_BASE =
  */
 function fetchRemoteSkill(capabilityKey) {
   return new Promise((resolve) => {
-    const url = `${REGISTRY_BASE}/${capabilityKey}.md`;
+    const url = `${REGISTRY_BASE}/${capabilityKey}/skills/${capabilityKey}.md`;
     https
       .get(url, (res) => {
         if (res.statusCode !== 200) { resolve(null); return; }
