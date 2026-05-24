@@ -33,6 +33,8 @@ test('required feature documentation skill describes the requested workflow and 
   assert.match(content, /## User Expectations/);
   assert.match(content, /## Acceptance Criteria/);
   assert.match(content, /always end the file with `\.feature\.md`/);
+  assert.match(content, /review and modify/i);
+  assert.match(content, /ask whether code implementation should proceed/i);
 });
 
 test('feature documentation template example lives in a standalone markdown file', () => {
