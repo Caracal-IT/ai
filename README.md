@@ -58,6 +58,19 @@ npx github:Caracal-IT/ai generate
 npx github:Caracal-IT/ai update
 ```
 
+### Windows 11 note for `npx github:...`
+
+If `npx github:Caracal-IT/ai ...` fails with:
+
+`ENOENT: no such file or directory, lstat 'C:\Users\<you>\AppData\Roaming\npm'`
+
+create the missing npm roaming folder once, then rerun the command:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:APPDATA\npm" | Out-Null
+npx github:Caracal-IT/ai init ./my-project
+```
+
 ## What `init` does
 
 1. Detects project type.
