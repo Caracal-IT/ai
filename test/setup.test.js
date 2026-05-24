@@ -399,6 +399,27 @@ test('update adds unknown .github/ files to excluded automatically', () => {
   assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
 });
 
+test('update excludes unknown files under managed .github folders', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-unknown-managed-group-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const manualFile = path.join(projectDir, '.github', 'skills', 'manual', 'SKILL.md');
+  fs.mkdirSync(path.dirname(manualFile), { recursive: true });
+  fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
+
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  const configPath = path.join(projectDir, 'project.ai.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  assert.ok(config.excluded.includes('.github/skills/manual/'));
+  assert.equal(
+    config.managed.includes('.github/skills/manual/'),
+    false,
+    'unknown .github items must not be promoted to managed',
+  );
+  assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
+});
+
 test('update preserves excluded folders inside managed .github directories', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-excluded-folder-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
