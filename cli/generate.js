@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { ensureFile, writeFile } = require('../lib/fs');
 const { readme } = require('../lib/templates');
 const { getSourceCatalog } = require('./catalog');
@@ -130,11 +131,70 @@ function copyAiToGithub(targetDir, overwrite, created, skipped) {
   }
 }
 
-function clearManagedDirectories(targetDir, roots) {
-  for (const root of roots) {
-    for (const group of MANAGED_GROUPS) {
-      fs.rmSync(path.join(targetDir, root, group), { recursive: true, force: true });
+function isGitRepository(targetDir) {
+  try {
+    const output = execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd: targetDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return output === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function isGitTrackedFile(targetDir, relPath) {
+  try {
+    execFileSync('git', ['ls-files', '--error-unmatch', '--', relPath], {
+      cwd: targetDir,
+      stdio: 'ignore',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeEmptyDirectories(dirPath) {
+  if (!fs.existsSync(dirPath)) return;
+
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    removeEmptyDirectories(path.join(dirPath, entry.name));
+  }
+
+  if (fs.readdirSync(dirPath).length === 0) {
+    fs.rmdirSync(dirPath);
+  }
+}
+
+function clearManagedAiDirectories(targetDir) {
+  for (const group of MANAGED_GROUPS) {
+    fs.rmSync(path.join(targetDir, '.ai', group), { recursive: true, force: true });
+  }
+}
+
+function clearManagedGithubDirectories(targetDir) {
+  const insideGitRepo = isGitRepository(targetDir);
+
+  for (const group of MANAGED_GROUPS) {
+    const groupDir = path.join(targetDir, '.github', group);
+    if (!fs.existsSync(groupDir)) continue;
+
+    if (!insideGitRepo) {
+      fs.rmSync(groupDir, { recursive: true, force: true });
+      continue;
     }
+
+    const files = listFilesRecursive(groupDir);
+    for (const relFile of files) {
+      const relPath = path.posix.join('.github', group, relFile);
+      if (isGitTrackedFile(targetDir, relPath)) continue;
+      fs.rmSync(path.join(groupDir, relFile), { force: true });
+    }
+
+    removeEmptyDirectories(groupDir);
   }
 }
 
@@ -145,7 +205,8 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   const catalog = getSourceCatalog();
 
   if (overwrite) {
-    clearManagedDirectories(targetDir, ['.ai', '.github']);
+    clearManagedAiDirectories(targetDir);
+    clearManagedGithubDirectories(targetDir);
   }
 
   const selections = normalizeSelections(catalog, config.selections || {});

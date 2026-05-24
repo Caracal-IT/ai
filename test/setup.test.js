@@ -156,6 +156,21 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   assert.equal(fs.existsSync(path.join(projectDir, '.github', fileGroup, selectedFile)), false);
 });
 
+test('update keeps tracked files under managed .github directories', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-tracked-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
+  const trackedFile = path.join(projectDir, '.github', 'skills', 'tracked.md');
+  fs.mkdirSync(path.dirname(trackedFile), { recursive: true });
+  fs.writeFileSync(trackedFile, '# keep\n', 'utf8');
+  execFileSync('git', ['add', '-f', '.github/skills/tracked.md'], { cwd: projectDir, stdio: 'ignore' });
+
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  assert.equal(fs.existsSync(trackedFile), true);
+});
+
 /* ─────────────────────────────────────────────────────────────────────────────
    setup alias (backward compat / deprecated)
    ──────────────────────────────────────────────────────────────────────────── */
