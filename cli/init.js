@@ -1,4 +1,3 @@
-const fs = require('node:fs');
 const path = require('node:path');
 const { detect } = require('./detect');
 const { runWizard } = require('./wizard');
@@ -10,13 +9,12 @@ const { getSourceCatalog } = require('./catalog');
  *
  * 1. Detect project type
  * 2. Run folder-driven wizard (or use defaults in non-TTY)
- * 3. Generate .ai/ first, then .github/ + README.md
+ * 3. Generate .github/ + README.md
  *
  * @param {string} targetDir – absolute path
  * @returns {Promise<{ created: string[], skipped: string[] }>}
  */
 async function init(targetDir) {
-  fs.mkdirSync(path.join(targetDir, '.ai'), { recursive: true });
   const detectedType = detect(targetDir);
   const catalog = getSourceCatalog();
 

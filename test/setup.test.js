@@ -31,7 +31,7 @@ function githubManagedPath(fileGroup, relFile) {
    init command
    ──────────────────────────────────────────────────────────────────────────── */
 
-test('init creates .ai/ and .github/ structure', () => {
+test('init creates .github/ structure without creating .ai/', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-'));
   const output = execFileSync(process.execPath, [cliPath, 'init', projectDir], {
     encoding: 'utf8',
@@ -42,8 +42,8 @@ test('init creates .ai/ and .github/ structure', () => {
   // project.ai.json lives at the project root
   assert.equal(fs.existsSync(path.join(projectDir, 'project.ai.json')), true);
 
-  // .ai/ source-of-truth files
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation', 'SKILL.md')), true);
+  // .ai/ must not be created
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai')), false);
 
   // .github/ generated layer
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
@@ -88,7 +88,7 @@ test('init preserves existing files when run again', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-existing-'));
   const skillPath = path.join(
     projectDir,
-    '.ai',
+    '.github',
     'skills',
     'feature-documentation',
     'SKILL.md',
@@ -121,7 +121,7 @@ test('init defaults to current directory when no target given', () => {
    generate / update command
    ──────────────────────────────────────────────────────────────────────────── */
 
-test('generate rebuilds .github/ from .ai/', () => {
+test('generate rebuilds .github/', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-generate-'));
 
   // Initialise first
@@ -227,7 +227,6 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   config.selections = { [category.key]: [item.key] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
-  fs.rmSync(path.join(projectDir, '.ai', fileGroup, selectedFile), { force: true });
   fs.rmSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile)), { force: true });
 
   const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
@@ -235,14 +234,12 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   });
 
   assert.match(output, /AI selections updated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), true);
   assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), true);
 
   config.selections = { [category.key]: [] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), false);
   assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), false);
 });
 
@@ -341,6 +338,7 @@ test('backward compat: generate still works when only legacy .ai/project.ai.json
 
   const rootConfig = path.join(projectDir, 'project.ai.json');
   const legacyConfig = path.join(projectDir, '.ai', 'project.ai.json');
+  fs.mkdirSync(path.dirname(legacyConfig), { recursive: true });
   fs.renameSync(rootConfig, legacyConfig);
 
   // Remove .github/ so generate must recreate it
