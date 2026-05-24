@@ -119,7 +119,15 @@ function copyAiToGithub(targetDir, overwrite, created, skipped) {
     const files = listFilesRecursive(aiGroupDir);
     for (const relFile of files) {
       const content = fs.readFileSync(path.join(aiGroupDir, relFile), 'utf8');
-      const targetRel = path.posix.join('.github', group, relFile);
+      const targetRel = group === 'skills' && relFile.toLowerCase().endsWith('.md')
+        ? path.posix.join(
+          '.github',
+          group,
+          path.posix.dirname(relFile),
+          path.posix.parse(relFile).name,
+          'SKILL.md',
+        )
+        : path.posix.join('.github', group, relFile);
       const targetAbs = path.join(targetDir, targetRel);
       const wrote = overwrite
         ? (writeFile(targetAbs, content), true)
@@ -220,7 +228,7 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   if (configWrote) created.push(configRel);
   else skipped.push(configRel);
 
-  const requiredDir = path.join(catalog.sourceRoot, 'Required');
+  const requiredDir = path.join(catalog.sourceRoot, 'required');
   copyItemToAi(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
 
   for (const category of catalog.categories) {

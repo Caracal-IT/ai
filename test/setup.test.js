@@ -8,6 +8,15 @@ const { getSourceCatalog } = require('../cli/catalog');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
+function githubManagedPath(fileGroup, relFile) {
+  const parts = relFile.split('/');
+  if (fileGroup !== 'skills') return path.join('.github', fileGroup, ...parts);
+
+  const parsed = path.posix.parse(relFile);
+  const dirParts = parsed.dir ? parsed.dir.split('/') : [];
+  return path.join('.github', 'skills', ...dirParts, parsed.name, 'SKILL.md');
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    init command
    ──────────────────────────────────────────────────────────────────────────── */
@@ -28,7 +37,7 @@ test('init creates .ai/ and .github/ structure', () => {
 
   // .github/ generated layer
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
   const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
@@ -138,7 +147,7 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
   fs.rmSync(path.join(projectDir, '.ai', fileGroup, selectedFile), { force: true });
-  fs.rmSync(path.join(projectDir, '.github', fileGroup, selectedFile), { force: true });
+  fs.rmSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile)), { force: true });
 
   const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
     encoding: 'utf8',
@@ -146,14 +155,14 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
 
   assert.match(output, /AI selections updated/);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', fileGroup, selectedFile)), true);
+  assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), true);
 
   config.selections = { [category.key]: [] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), false);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', fileGroup, selectedFile)), false);
+  assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), false);
 });
 
 test('update keeps tracked files under managed .github directories', () => {

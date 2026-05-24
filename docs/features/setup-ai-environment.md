@@ -5,7 +5,7 @@
 - [x] Provide an `init` command that bootstraps a structured AI workspace.
 - [x] Remove hard-coded architecture/testing/logging wizard steps.
 - [x] Drive wizard sections from `src/<category>/<item>/` folder structure.
-- [x] Add `src/Required/` that is always installed.
+- [x] Add `src/required/` that is always installed.
 - [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.ai/` and `.github/`.
 - [x] Keep `.github/` source-controlled files untouched on non-overwrite init.
 - [x] Add `src/language/go/instructions/go.best-practices.instructions.md`.
@@ -19,7 +19,7 @@
 - [x] The wizard shows category sections using folder names from `src/`.
 - [x] The wizard shows selectable sub-folder items with checkbox selection (spacebar/pointer).
 - [x] `.ai/` is created first and used as source before `.github/` compilation.
-- [x] `src/Required` content is always installed.
+- [x] `src/required` content is always installed.
 - [x] Running `update` pre-marks installed items and recopies marked selections.
 - [x] Generated `.github/{instructions,skills,agents}` AI files are ignored via `.gitignore`.
 
