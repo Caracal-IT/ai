@@ -13,7 +13,7 @@ test('source catalog includes kotlin language best-practices item', () => {
 
   const kotlinItem = languageCategory.items.find((item) => item.key === 'kotlin');
   assert.ok(kotlinItem);
-  assert.deepEqual(kotlinItem.files.instructions, ['language.kotlin.instruktion.md']);
+  assert.deepEqual(kotlinItem.files.instructions, ['kotlin.best-practices.instructions.md']);
 });
 
 test('source catalog excludes removed legacy root directories', () => {

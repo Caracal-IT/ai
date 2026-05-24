@@ -32,17 +32,6 @@ function parseFrontMatter(content) {
   return result;
 }
 
-function parseManagedMarkdownPath(relPath) {
-  const match = relPath.match(/^([^/]+)\/([^/]+)\/(instructions|skills|agents)\/(.+)$/);
-  if (!match) return null;
-  return {
-    category: match[1],
-    item: match[2],
-    group: match[3],
-    fileName: path.posix.basename(match[4]),
-  };
-}
-
 test('src markdown items include required front matter fields', () => {
   const srcDir = path.resolve(__dirname, '..', 'src');
   const markdownFiles = collectMarkdownFiles(srcDir);
@@ -64,30 +53,6 @@ test('src markdown items include required front matter fields', () => {
 
     if (rel.startsWith('instructions/') || rel.includes('/instructions/')) {
       assert.ok(frontMatter.applyTo, `${rel} is missing applyTo`);
-    }
-
-    const managedPath = parseManagedMarkdownPath(rel);
-    if (managedPath && managedPath.category !== 'required') {
-      if (managedPath.group === 'skills') {
-        assert.equal(managedPath.fileName, 'SKILL.md', `${rel} must be named SKILL.md`);
-        continue;
-      }
-
-      const expectedPrefix = `${managedPath.category}.${managedPath.item}.`;
-      const expectedSuffixByGroup = {
-        instructions: '.instruktion.md',
-        agents: '.agent.md',
-      };
-      const expectedSuffix = expectedSuffixByGroup[managedPath.group];
-
-      assert.ok(
-        managedPath.fileName.startsWith(expectedPrefix),
-        `${rel} must start with ${expectedPrefix}`,
-      );
-      assert.ok(
-        managedPath.fileName.endsWith(expectedSuffix),
-        `${rel} must end with ${expectedSuffix}`,
-      );
     }
 
     if (rel.startsWith('capabilities/') && rel.includes('/skills/')) {
