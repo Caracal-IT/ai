@@ -328,7 +328,11 @@ test('init records pre-existing .github/ files in excluded list', () => {
 
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
   assert.ok(config.excluded.includes('.github/manual/'), 'pre-existing folder must be excluded');
-  assert.ok(config.excluded.includes('.github/manual/copilot-instructions.md'), 'pre-existing file must be excluded');
+  assert.equal(
+    config.excluded.includes('.github/manual/copilot-instructions.md'),
+    false,
+    'excluded list should prefer the folder over every child file',
+  );
   // The pre-existing file must not be modified
   assert.equal(fs.readFileSync(preExistingFile, 'utf8'), '# Pre-existing\n');
 });
@@ -343,6 +347,11 @@ test('init records generated .github/ files in managed list', () => {
   assert.ok(
     config.managed.includes('.github/skills/feature-documentation/'),
     'managed list must include generated folders',
+  );
+  assert.equal(
+    config.managed.includes('.github/skills/feature-documentation/SKILL.md'),
+    false,
+    'managed list should prefer the generated folder over every child file',
   );
   assert.ok(
     config.managed.every((f) => f.startsWith('.github/')),
