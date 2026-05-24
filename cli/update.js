@@ -28,7 +28,7 @@ async function update(targetDir) {
     targetDir,
     projectName,
     projectType,
-    { selections: wizardResult.selections, excluded: existing.excluded || [] },
+    { selections: wizardResult.selections, excluded: existing.excluded || [], managed: existing.managed || [] },
     { overwrite: true },
   );
 
