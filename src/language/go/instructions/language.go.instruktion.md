@@ -1,4 +1,6 @@
 ---
+name: "go-best-practices"
+description: "Go coding, testing, and performance standards for this repository."
 applyTo: "**/*.go"
 ---
 

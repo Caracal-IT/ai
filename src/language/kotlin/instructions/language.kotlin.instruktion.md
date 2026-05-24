@@ -1,4 +1,6 @@
 ---
+name: "kotlin-best-practices"
+description: "Kotlin coding and testing standards for this repository."
 applyTo: "**/*.kt,**/*.kts"
 ---
 

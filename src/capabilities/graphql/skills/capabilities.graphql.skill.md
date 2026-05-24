@@ -1,5 +1,5 @@
 ---
-name: "GraphQL"
+name: "graphql"
 description: "Expose a GraphQL API following schema-first design principles."
 applyTo: "**"
 ---

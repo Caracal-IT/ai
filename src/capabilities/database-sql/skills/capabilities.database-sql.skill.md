@@ -1,5 +1,5 @@
 ---
-name: "Database (SQL)"
+name: "database-sql"
 description: "Integrate a relational database following best practices."
 applyTo: "**"
 ---

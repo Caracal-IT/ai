@@ -8,6 +8,20 @@ const { getSourceCatalog } = require('../cli/catalog');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
+function parseFrontMatter(content) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!match) return null;
+  const result = {};
+  for (const rawLine of match[1].split(/\r?\n/)) {
+    const separator = rawLine.indexOf(':');
+    if (separator === -1) continue;
+    const key = rawLine.slice(0, separator).trim();
+    const value = rawLine.slice(separator + 1).trim().replace(/^"|"$/g, '');
+    result[key] = value;
+  }
+  return result;
+}
+
 function githubManagedPath(fileGroup, relFile) {
   const parts = relFile.split('/');
   if (fileGroup !== 'skills') return path.join('.github', fileGroup, ...parts);
@@ -39,6 +53,22 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
+  const generatedInstruction = fs.readFileSync(
+    path.join(projectDir, '.github', 'instructions', 'getting-started.md'),
+    'utf8',
+  );
+  const generatedSkill = fs.readFileSync(
+    path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md'),
+    'utf8',
+  );
+  const instructionFrontMatter = parseFrontMatter(generatedInstruction);
+  const skillFrontMatter = parseFrontMatter(generatedSkill);
+  assert.ok(instructionFrontMatter);
+  assert.ok(skillFrontMatter);
+  assert.ok(instructionFrontMatter.name);
+  assert.ok(instructionFrontMatter.description);
+  assert.ok(skillFrontMatter.name);
+  assert.ok(skillFrontMatter.description);
   assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
   const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
   assert.match(gitignore, /^\.github\/instructions\/$/m);

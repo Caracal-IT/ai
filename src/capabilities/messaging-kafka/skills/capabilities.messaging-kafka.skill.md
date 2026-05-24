@@ -1,5 +1,5 @@
 ---
-name: "Messaging (Kafka)"
+name: "messaging-kafka"
 description: "Integrate with Apache Kafka for event-driven communication."
 applyTo: "**"
 ---

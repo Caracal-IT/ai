@@ -1,5 +1,5 @@
 ---
-name: "Redis Cache"
+name: "redis-cache"
 description: "Use Redis for caching, session storage, or rate-limiting."
 applyTo: "**"
 ---

@@ -1,5 +1,5 @@
 ---
-name: "Authentication"
+name: "authentication"
 description: "Implement secure, standards-based authentication."
 applyTo: "**"
 ---

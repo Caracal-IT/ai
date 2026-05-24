@@ -1,5 +1,5 @@
 ---
-name: "Default"
+name: "default"
 description: "Starter skill definition for reusable AI tasks in this CLI project."
 ---
 

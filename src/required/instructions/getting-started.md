@@ -1,4 +1,6 @@
 ---
+name: "getting-started"
+description: "Required starter guidance for using the Caracal-IT AI CLI workspace."
 applyTo: "**"
 ---
 

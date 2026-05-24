@@ -1,5 +1,5 @@
 ---
-name: "REST API Standards"
+name: "rest-api-standards"
 description: "Design and implement RESTful HTTP APIs that are consistent, discoverable, and versioned."
 applyTo: "**"
 ---

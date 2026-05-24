@@ -1,5 +1,5 @@
 ---
-name: "Docker Support"
+name: "docker-support"
 description: "Containerise the application for consistent, portable deployments."
 applyTo: "**"
 ---

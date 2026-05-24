@@ -37,9 +37,9 @@ src/
 │   └── ...
 └── language/
     ├── go/
-    │   └── instructions/go.best-practices.instructions.md
+    │   └── instructions/language.go.instruktion.md
     └── kotlin/
-        └── instructions/kotlin.best-practices.instructions.md
+        └── instructions/language.kotlin.instruktion.md
 ```
 
 ## Usage
