@@ -115,29 +115,45 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
+  const catalog = getSourceCatalog();
+  const category = catalog.categories.find((entry) => entry.items.length > 0);
+  assert.ok(category);
+  const item = category.items.find((entry) => (
+    entry.files.instructions.length > 0
+    || entry.files.skills.length > 0
+    || entry.files.agents.length > 0
+  ));
+  assert.ok(item);
+  const fileGroup = item.files.instructions.length > 0
+    ? 'instructions'
+    : item.files.skills.length > 0
+      ? 'skills'
+      : 'agents';
+  const selectedFile = item.files[fileGroup][0];
+  assert.ok(selectedFile);
+
   const configPath = path.join(projectDir, '.ai', 'project.ai.json');
-  const goInstruction = 'go.best-practices.instructions.md';
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  config.selections = { language: ['go'] };
+  config.selections = { [category.key]: [item.key] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
-  fs.rmSync(path.join(projectDir, '.ai', 'instructions', goInstruction), { force: true });
-  fs.rmSync(path.join(projectDir, '.github', 'instructions', goInstruction), { force: true });
+  fs.rmSync(path.join(projectDir, '.ai', fileGroup, selectedFile), { force: true });
+  fs.rmSync(path.join(projectDir, '.github', fileGroup, selectedFile), { force: true });
 
   const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
     encoding: 'utf8',
   });
 
   assert.match(output, /AI selections updated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', goInstruction)), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', goInstruction)), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', fileGroup, selectedFile)), true);
 
-  config.selections = { language: [] };
+  config.selections = { [category.key]: [] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', goInstruction)), false);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', goInstruction)), false);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', fileGroup, selectedFile)), false);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', fileGroup, selectedFile)), false);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
