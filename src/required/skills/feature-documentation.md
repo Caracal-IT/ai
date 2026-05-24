@@ -16,9 +16,29 @@ Create and maintain feature specifications as Markdown files in `docs/<category>
 3. If an optional sub-category may be needed and was not provided, ask whether one should be used.
 4. Reuse an existing matching feature document when changing a feature instead of creating a duplicate.
 5. Store the file in `docs/<category>/<feature-name>.feature.md` or `docs/<category>/<sub-category>/<feature-name>.feature.md`.
-6. Use `templates/feature-documentation/feature-template.feature.md` as the default example template for new feature specifications.
-7. When creating a new feature specification, follow the structure and tone of existing feature documents in the repository when available; otherwise, create a clear Markdown spec with sections such as overview, requirements, behavior, and acceptance criteria.
-8. Use a kebab-case filename and always end the file with `.feature.md`.
+6. When creating a new feature specification, follow the structure and tone of existing feature documents in the repository when available; otherwise, use the default template below.
+7. Use a kebab-case filename and always end the file with `.feature.md`.
+
+## Default Template
+
+```markdown
+# <Feature Title>
+
+## Summary
+
+- [ ] Describe the feature at a high level.
+- [ ] Note the problem being solved or the expected outcome.
+
+## User Expectations
+
+- [ ] Describe the user-facing behavior.
+- [ ] Capture important workflows, constraints, and edge cases.
+
+## Acceptance Criteria
+
+- [ ] Define the observable conditions for completion.
+- [ ] List any validation, rollout, or follow-up requirements.
+```
 
 ## Trigger Phrases
 - create a feature
