@@ -33,5 +33,8 @@ test('source catalog includes required starter files', () => {
 
   assert.deepEqual(catalog.required.instructions, []);
   assert.deepEqual(catalog.required.agents, []);
-  assert.deepEqual(catalog.required.skills, ['feature-documentation.md']);
+  assert.deepEqual(catalog.required.skills, [
+    'feature-documentation/SKILL.md',
+    'feature-documentation/templates/feature.template.md',
+  ]);
 });
