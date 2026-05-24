@@ -27,3 +27,14 @@ test('source catalog excludes removed legacy root directories', () => {
   assert.equal(catalog.categories.some((category) => category.key === 'skills'), false);
   assert.equal(catalog.categories.some((category) => category.key === 'agents'), false);
 });
+
+test('source catalog includes required starter files', () => {
+  const catalog = getSourceCatalog(path.resolve(__dirname, '..', 'src'));
+
+  assert.deepEqual(catalog.required.instructions, ['getting-started.md']);
+  assert.deepEqual(catalog.required.agents, ['default.json']);
+  assert.deepEqual(
+    [...catalog.required.skills].sort(),
+    ['default.md', 'feature-documentation.md'],
+  );
+});

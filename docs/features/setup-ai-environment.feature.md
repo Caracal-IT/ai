@@ -11,6 +11,7 @@
 - [x] Add `src/language/go/instructions/go.best-practices.instructions.md`.
 - [x] Add `src/language/kotlin/instructions/kotlin.best-practices.instructions.md`.
 - [x] Keep `generate` and add interactive `update` with pre-marked installed items.
+- [x] Add a required `feature-documentation` skill with a `.feature.md` demo template.
 
 ## User Expectations
 
@@ -22,6 +23,7 @@
 - [x] `src/required` content is always installed.
 - [x] Running `update` pre-marks installed items and recopies marked selections.
 - [x] Generated `.github/{instructions,skills,agents}` AI files are ignored via `.gitignore`.
+- [x] The generated workspace includes a required feature-documentation skill for `docs/.../*.feature.md` files.
 
 ## Acceptance Criteria
 
@@ -32,3 +34,4 @@
 - [x] `update [dir]` pre-selects installed items and re-copies all marked items.
 - [x] `generate [dir]` still rebuilds `.github/` from `.ai/project.ai.json`.
 - [x] Automated tests cover init, idempotent re-run, generate, update behavior, setup alias, unknown command.
+- [x] The required feature-documentation skill tells users to confirm understanding, ask for category/sub-category when needed, and save docs as `.feature.md` files under `docs/`.

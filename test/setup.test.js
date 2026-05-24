@@ -33,10 +33,13 @@ test('init creates .ai/ and .github/ structure', () => {
   // .ai/ source-of-truth files
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', 'getting-started.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'default.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'agents', 'default.json')), true);
 
   // .github/ generated layer
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
   const generatedInstruction = fs.readFileSync(
     path.join(projectDir, '.github', 'instructions', 'getting-started.md'),
@@ -75,6 +78,14 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.ok(Array.isArray(config.instructions));
   assert.ok(Array.isArray(config.skills));
   assert.ok(Array.isArray(config.agents));
+
+  const agent = JSON.parse(
+    fs.readFileSync(path.join(projectDir, '.ai', 'agents', 'default.json'), 'utf8'),
+  );
+  assert.deepEqual(agent.skills, [
+    '.ai/skills/default.md',
+    '.ai/skills/feature-documentation.md',
+  ]);
 });
 
 test('init preserves existing files when run again', () => {
