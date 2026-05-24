@@ -1,6 +1,7 @@
 ---
 name: "GraphQL"
 description: "Expose a GraphQL API following schema-first design principles."
+applyTo: "**"
 ---
 
 # Skill: GraphQL

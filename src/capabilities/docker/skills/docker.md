@@ -1,6 +1,7 @@
 ---
 name: "Docker Support"
 description: "Containerise the application for consistent, portable deployments."
+applyTo: "**"
 ---
 
 # Skill: Docker Support
