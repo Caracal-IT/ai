@@ -36,8 +36,10 @@ src/
 │   │   └── skills/
 │   └── ...
 └── language/
-    └── go/
-        └── instructions/go.best-practices.instructions.md
+    ├── go/
+    │   └── instructions/go.best-practices.instructions.md
+    └── kotlin/
+        └── instructions/kotlin.best-practices.instructions.md
 ```
 
 ## Usage

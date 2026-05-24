@@ -9,6 +9,7 @@
 - [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.ai/` and `.github/`.
 - [x] Keep `.github/` source-controlled files untouched on non-overwrite init.
 - [x] Add `src/language/go/instructions/go.best-practices.instructions.md`.
+- [x] Add `src/language/kotlin/instructions/kotlin.best-practices.instructions.md`.
 - [x] Keep `generate` and add interactive `update` with pre-marked installed items.
 
 ## User Expectations
