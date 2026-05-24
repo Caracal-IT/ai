@@ -6,17 +6,38 @@ const { readme } = require('../lib/templates');
 const { getSourceCatalog } = require('./catalog');
 
 const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
-const GITIGNORE_ENTRIES = [
+
+// Config lives at the project root; fall back to the legacy .ai/ location.
+const CONFIG_REL = 'project.ai.json';
+const LEGACY_CONFIG_REL = path.join('.ai', 'project.ai.json');
+
+// These entries were previously added to .gitignore to hide generated files.
+// We now want every .github/ file to be source-controlled, so we actively
+// remove them when encountered.
+const GITIGNORE_ENTRIES_TO_REMOVE = [
   '.github/instructions/',
   '.github/skills/',
   '.github/agents/',
 ];
 
+/**
+ * Resolve the path to project.ai.json.
+ * Prefers the root location; falls back to the legacy .ai/ location so that
+ * existing projects continue to work until they run `update`.
+ */
+function resolveConfigPath(targetDir) {
+  const rootPath = path.join(targetDir, CONFIG_REL);
+  if (fs.existsSync(rootPath)) return rootPath;
+  const legacyPath = path.join(targetDir, LEGACY_CONFIG_REL);
+  if (fs.existsSync(legacyPath)) return legacyPath;
+  return rootPath;
+}
+
 function buildProjectConfig(projectName, typeKey, config = {}) {
   return JSON.stringify(
     {
       name: projectName,
-      version: 2,
+      version: 3,
       type: typeKey,
       selections: config.selections || {},
       sourceRoot: '.ai',
@@ -24,6 +45,8 @@ function buildProjectConfig(projectName, typeKey, config = {}) {
       instructions: ['.ai/instructions/'],
       skills: ['.ai/skills/'],
       agents: ['.ai/agents/'],
+      excluded: config.excluded || [],
+      managed: config.managed || [],
     },
     null,
     2,
@@ -53,16 +76,16 @@ function ensureGitignore(targetDir) {
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
 
-  const lines = new Set(existing.split(/\r?\n/));
-  let updated = existing;
+  // Remove previously-managed directory ignore entries so that all .github/
+  // files are source-controlled going forward.
+  const lines = existing.split(/\r?\n/);
+  const filtered = lines.filter((line) => !GITIGNORE_ENTRIES_TO_REMOVE.includes(line));
 
-  for (const entry of GITIGNORE_ENTRIES) {
-    if (!lines.has(entry)) {
-      updated += updated.endsWith('\n') || updated.length === 0 ? '' : '\n';
-      updated += `${entry}\n`;
-      lines.add(entry);
-    }
+  // Trim trailing blank lines introduced by the removal.
+  while (filtered.length > 0 && filtered[filtered.length - 1] === '') {
+    filtered.pop();
   }
+  const updated = filtered.length > 0 ? `${filtered.join('\n')}\n` : '';
 
   if (updated !== existing) {
     writeFile(gitignorePath, updated);
@@ -214,11 +237,34 @@ function clearManagedGithubDirectories(targetDir) {
   }
 }
 
+/**
+ * List every file currently in the .github/ directory tree (relative to targetDir).
+ * Returns posix-style paths like ".github/copilot-instructions.md".
+ */
+function listGithubFiles(targetDir) {
+  const githubDir = path.join(targetDir, '.github');
+  if (!fs.existsSync(githubDir)) return [];
+  return listFilesRecursive(githubDir).map((f) => path.posix.join('.github', f));
+}
+
 async function generateProject(targetDir, projectName, typeKey, config, opts = {}) {
   const overwrite = Boolean(opts.overwrite);
   const created = [];
   const skipped = [];
   const catalog = getSourceCatalog();
+
+  // Carry forward any files the user has already excluded from management.
+  const excluded = Array.isArray(config.excluded) ? [...config.excluded] : [];
+
+  // On the very first init (no overwrite, no existing config) record every
+  // file already present in .github/ so we never touch them automatically.
+  const isFirstInit = !overwrite && !fs.existsSync(resolveConfigPath(targetDir));
+  if (isFirstInit) {
+    const preExisting = listGithubFiles(targetDir);
+    for (const f of preExisting) {
+      if (!excluded.includes(f)) excluded.push(f);
+    }
+  }
 
   if (overwrite) {
     clearManagedAiDirectories(targetDir);
@@ -227,14 +273,16 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
 
   const selections = normalizeSelections(catalog, config.selections || {});
 
-  const configRel = '.ai/project.ai.json';
-  const configAbs = path.join(targetDir, configRel);
-  const configContent = buildProjectConfig(projectName, typeKey, { selections });
+  // Write config to the project root (not inside .ai/).
+  const configAbs = path.join(targetDir, CONFIG_REL);
+  // Placeholder config first; we will rewrite it at the end with the
+  // accurate `managed` list.
+  const configContent = buildProjectConfig(projectName, typeKey, { selections, excluded, managed: [] });
   const configWrote = overwrite
     ? (writeFile(configAbs, configContent), true)
     : ensureFile(configAbs, configContent);
-  if (configWrote) created.push(configRel);
-  else skipped.push(configRel);
+  if (configWrote) created.push(CONFIG_REL);
+  else skipped.push(CONFIG_REL);
 
   const requiredDir = path.join(catalog.sourceRoot, 'required');
   copyItemToAi(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
@@ -249,6 +297,19 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
 
   copyAiToGithub(targetDir, overwrite, created, skipped);
 
+  // Build the authoritative managed list from what is now in the managed
+  // group directories under .github/.
+  const managed = [];
+  for (const group of MANAGED_GROUPS) {
+    const groupDir = path.join(targetDir, '.github', group);
+    for (const f of listFilesRecursive(groupDir)) {
+      managed.push(path.posix.join('.github', group, f));
+    }
+  }
+
+  // Persist the config with the accurate excluded + managed lists.
+  writeFile(configAbs, buildProjectConfig(projectName, typeKey, { selections, excluded, managed }));
+
   const readmeRel = 'README.md';
   const readmeAbs = path.join(targetDir, readmeRel);
   const readmeContent = readme(projectName, typeKey, { selections });
@@ -258,19 +319,17 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   if (readmeWrote) created.push(readmeRel);
   else skipped.push(readmeRel);
 
-  if (ensureGitignore(targetDir)) {
-    created.push('.gitignore');
-  }
+  ensureGitignore(targetDir);
 
-  return { created, skipped };
+  return { created, skipped, excluded, managed };
 }
 
 async function syncProject(targetDir) {
-  const configPath = path.join(targetDir, '.ai', 'project.ai.json');
+  const configPath = resolveConfigPath(targetDir);
 
   if (!fs.existsSync(configPath)) {
     throw new Error(
-      `No .ai/project.ai.json found in ${targetDir}. Run \"init\" first.`,
+      `No project.ai.json found in ${targetDir}. Run "init" first.`,
     );
   }
 
@@ -281,4 +340,4 @@ async function syncProject(targetDir) {
   return generateProject(targetDir, projectName, typeKey, config, { overwrite: true });
 }
 
-module.exports = { generateProject, syncProject, normalizeSelections };
+module.exports = { generateProject, syncProject, normalizeSelections, resolveConfigPath, listGithubFiles };

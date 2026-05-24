@@ -39,8 +39,10 @@ test('init creates .ai/ and .github/ structure', () => {
 
   assert.match(output, /AI workspace ready/);
 
+  // project.ai.json lives at the project root
+  assert.equal(fs.existsSync(path.join(projectDir, 'project.ai.json')), true);
+
   // .ai/ source-of-truth files
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation', 'SKILL.md')), true);
 
   // .github/ generated layer
@@ -54,25 +56,32 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.ok(skillFrontMatter.name);
   assert.ok(skillFrontMatter.description);
   assert.ok(skillFrontMatter.whenToUse);
-  assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
-  const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
-  assert.match(gitignore, /^\.github\/instructions\/$/m);
-  assert.match(gitignore, /^\.github\/skills\/$/m);
-  assert.match(gitignore, /^\.github\/agents\/$/m);
+
+  // .github/ managed files must NOT be in .gitignore (they are source-controlled)
+  const gitignorePath = path.join(projectDir, '.gitignore');
+  const gitignore = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
+  assert.doesNotMatch(gitignore, /^\.github\/instructions\/$/m);
+  assert.doesNotMatch(gitignore, /^\.github\/skills\/$/m);
+  assert.doesNotMatch(gitignore, /^\.github\/agents\/$/m);
 
   // README
   assert.equal(fs.existsSync(path.join(projectDir, 'README.md')), true);
 
   // project.ai.json must be valid JSON with expected fields
   const config = JSON.parse(
-    fs.readFileSync(path.join(projectDir, '.ai', 'project.ai.json'), 'utf8'),
+    fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'),
   );
-  assert.equal(config.version, 2);
+  assert.equal(config.version, 3);
   assert.ok(config.type);
   assert.ok(config.selections);
   assert.ok(Array.isArray(config.instructions));
   assert.ok(Array.isArray(config.skills));
   assert.ok(Array.isArray(config.agents));
+  assert.ok(Array.isArray(config.excluded));
+  assert.ok(Array.isArray(config.managed));
+
+  // Managed files must include the generated .github/ files
+  assert.ok(config.managed.some((f) => f.startsWith('.github/')));
 });
 
 test('init preserves existing files when run again', () => {
@@ -105,7 +114,7 @@ test('init defaults to current directory when no target given', () => {
   });
 
   assert.match(output, /AI workspace ready/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, 'project.ai.json')), true);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -213,7 +222,7 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   const selectedFile = item.files[fileGroup][0];
   assert.ok(selectedFile);
 
-  const configPath = path.join(projectDir, '.ai', 'project.ai.json');
+  const configPath = path.join(projectDir, 'project.ai.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   config.selections = { [category.key]: [item.key] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
@@ -253,6 +262,100 @@ test('update keeps tracked files under managed .github directories', () => {
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   project.ai.json root placement and excluded/managed tracking
+   ──────────────────────────────────────────────────────────────────────────── */
+
+test('init records pre-existing .github/ files in excluded list', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-excluded-'));
+
+  // Place a pre-existing file in .github/ before init
+  const preExistingFile = path.join(projectDir, '.github', 'copilot-instructions.md');
+  fs.mkdirSync(path.dirname(preExistingFile), { recursive: true });
+  fs.writeFileSync(preExistingFile, '# Pre-existing\n', 'utf8');
+
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
+  assert.ok(config.excluded.includes('.github/copilot-instructions.md'), 'pre-existing file must be excluded');
+  // The pre-existing file must not be modified
+  assert.equal(fs.readFileSync(preExistingFile, 'utf8'), '# Pre-existing\n');
+});
+
+test('init records generated .github/ files in managed list', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-managed-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
+  assert.ok(Array.isArray(config.managed));
+  assert.ok(config.managed.length > 0, 'managed list must be non-empty after init');
+  assert.ok(
+    config.managed.every((f) => f.startsWith('.github/')),
+    'all managed entries must be under .github/',
+  );
+});
+
+test('ensureGitignore removes old .github/ ignore entries for source control', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-gitignore-migrate-'));
+  const gitignorePath = path.join(projectDir, '.gitignore');
+
+  // Simulate an old-style .gitignore with the entries we should remove
+  fs.writeFileSync(
+    gitignorePath,
+    'node_modules/\n.github/instructions/\n.github/skills/\n.github/agents/\n',
+    'utf8',
+  );
+
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const gitignore = fs.readFileSync(gitignorePath, 'utf8');
+  assert.doesNotMatch(gitignore, /^\.github\/instructions\/$/m);
+  assert.doesNotMatch(gitignore, /^\.github\/skills\/$/m);
+  assert.doesNotMatch(gitignore, /^\.github\/agents\/$/m);
+  // Other entries must be preserved
+  assert.match(gitignore, /node_modules\//);
+});
+
+test('update adds unknown .github/ files to excluded in non-TTY mode', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-unknown-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  // Simulate a manually added file (not managed by the tool)
+  const manualFile = path.join(projectDir, '.github', 'copilot-instructions.md');
+  fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
+
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
+  // In non-TTY mode the default answer to "Delete?" is false → file stays and gets excluded
+  assert.ok(
+    config.excluded.includes('.github/copilot-instructions.md'),
+    'unknown file must be added to excluded list',
+  );
+  assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
+});
+
+test('backward compat: generate still works when only legacy .ai/project.ai.json exists', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-legacy-'));
+  // Run init once to get the root config, then rename it to legacy location
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const rootConfig = path.join(projectDir, 'project.ai.json');
+  const legacyConfig = path.join(projectDir, '.ai', 'project.ai.json');
+  fs.renameSync(rootConfig, legacyConfig);
+
+  // Remove .github/ so generate must recreate it
+  fs.rmSync(path.join(projectDir, '.github'), { recursive: true, force: true });
+
+  const output = execFileSync(
+    process.execPath,
+    [cliPath, 'generate', projectDir],
+    { encoding: 'utf8' },
+  );
+  assert.match(output, /\.github\/ regenerated/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
    setup alias (backward compat / deprecated)
    ──────────────────────────────────────────────────────────────────────────── */
 
@@ -268,7 +371,7 @@ test('setup alias still works and prints deprecation warning', () => {
   const combined = result.stdout + result.stderr;
   assert.match(combined, /deprecated/i);
   assert.match(result.stdout, /AI workspace ready/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, 'project.ai.json')), true);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
