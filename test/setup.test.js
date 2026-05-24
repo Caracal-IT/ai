@@ -26,10 +26,14 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'agents', 'default.json')), true);
 
   // .github/ generated layer
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'copilot-instructions.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
+  const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
+  assert.match(gitignore, /^\.github\/instructions\/$/m);
+  assert.match(gitignore, /^\.github\/skills\/$/m);
+  assert.match(gitignore, /^\.github\/agents\/$/m);
 
   // README
   assert.equal(fs.existsSync(path.join(projectDir, 'README.md')), true);
@@ -38,8 +42,9 @@ test('init creates .ai/ and .github/ structure', () => {
   const config = JSON.parse(
     fs.readFileSync(path.join(projectDir, '.ai', 'project.ai.json'), 'utf8'),
   );
-  assert.equal(config.version, 1);
+  assert.equal(config.version, 2);
   assert.ok(config.type);
+  assert.ok(config.selections);
   assert.ok(Array.isArray(config.instructions));
   assert.ok(Array.isArray(config.skills));
   assert.ok(Array.isArray(config.agents));
@@ -97,7 +102,28 @@ test('generate rebuilds .github/ from .ai/', () => {
   );
 
   assert.match(output, /\.github\/ regenerated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'copilot-instructions.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
+});
+
+test('update pre-marks installed items and recopies them', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  const configPath = path.join(projectDir, '.ai', 'project.ai.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.selections = { capabilities: ['authentication'] };
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+
+  fs.rmSync(path.join(projectDir, '.ai', 'skills', 'authentication.md'), { force: true });
+  fs.rmSync(path.join(projectDir, '.github', 'skills', 'authentication.md'), { force: true });
+
+  const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
+    encoding: 'utf8',
+  });
+
+  assert.match(output, /AI selections updated/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'authentication.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'authentication.md')), true);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────

@@ -1,88 +1,187 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { ensureFile, writeFile } = require('../lib/fs');
-const {
-  copilotInstructions,
-  projectConfig,
-  gettingStartedInstruction,
-  defaultSkill,
-  capabilitySkill,
-  defaultAgent,
-  readme,
-} = require('../lib/templates');
-const { resolveSkills } = require('./registry');
+const { readme } = require('../lib/templates');
+const { getSourceCatalog } = require('./catalog');
 
-/**
- * Write the full `.ai/` source-of-truth structure and compile `.github/`.
- *
- * @param {string} targetDir  – absolute path to the project root
- * @param {string} projectName
- * @param {string} typeKey    – project type (e.g. 'nodejs')
- * @param {object} config     – { category, architecture, testing, logging, capabilities[] }
- * @param {object} [opts]     – { overwrite: boolean }
- * @returns {{ created: string[], skipped: string[] }}
- */
+const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
+const GITIGNORE_ENTRIES = [
+  '.github/instructions/',
+  '.github/skills/',
+  '.github/agents/',
+];
+
+function buildProjectConfig(projectName, typeKey, config = {}) {
+  return JSON.stringify(
+    {
+      name: projectName,
+      version: 2,
+      type: typeKey,
+      selections: config.selections || {},
+      sourceRoot: '.ai',
+      generatedRoot: '.github',
+      instructions: ['.ai/instructions/'],
+      skills: ['.ai/skills/'],
+      agents: ['.ai/agents/'],
+    },
+    null,
+    2,
+  ) + '\n';
+}
+
+function listFilesRecursive(dirPath, prefix = '') {
+  const files = [];
+  if (!fs.existsSync(dirPath)) return files;
+
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    const full = path.join(dirPath, entry.name);
+    const rel = prefix ? path.posix.join(prefix, entry.name) : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...listFilesRecursive(full, rel));
+    } else {
+      files.push(rel);
+    }
+  }
+
+  return files;
+}
+
+function ensureGitignore(targetDir) {
+  const gitignorePath = path.join(targetDir, '.gitignore');
+  const existing = fs.existsSync(gitignorePath)
+    ? fs.readFileSync(gitignorePath, 'utf8')
+    : '';
+
+  const lines = new Set(existing.split(/\r?\n/));
+  let updated = existing;
+
+  for (const entry of GITIGNORE_ENTRIES) {
+    if (!lines.has(entry)) {
+      updated += updated.endsWith('\n') || updated.length === 0 ? '' : '\n';
+      updated += `${entry}\n`;
+      lines.add(entry);
+    }
+  }
+
+  if (updated !== existing) {
+    writeFile(gitignorePath, updated);
+    return true;
+  }
+
+  return false;
+}
+
+function normalizeSelections(catalog, inputSelections = {}) {
+  const normalized = {};
+
+  for (const category of catalog.categories) {
+    const valid = new Set(category.items.map((item) => item.key));
+    const selected = inputSelections[category.key] || [];
+    normalized[category.key] = selected.filter((key) => valid.has(key));
+  }
+
+  return normalized;
+}
+
+function copyGroupFiles({ targetDir, srcRoot, destinationRoot, group, files, overwrite, created, skipped }) {
+  for (const relFile of files) {
+    const content = fs.readFileSync(path.join(srcRoot, group, relFile), 'utf8');
+    const targetRel = path.posix.join(destinationRoot, group, relFile);
+    const targetAbs = path.join(targetDir, targetRel);
+    const wrote = overwrite
+      ? (writeFile(targetAbs, content), true)
+      : ensureFile(targetAbs, content);
+
+    if (wrote) created.push(targetRel);
+    else skipped.push(targetRel);
+  }
+}
+
+function copyItemToAi(targetDir, sourceDir, files, overwrite, created, skipped) {
+  for (const group of MANAGED_GROUPS) {
+    copyGroupFiles({
+      targetDir,
+      srcRoot: sourceDir,
+      destinationRoot: '.ai',
+      group,
+      files: files[group],
+      overwrite,
+      created,
+      skipped,
+    });
+  }
+}
+
+function copyAiToGithub(targetDir, overwrite, created, skipped) {
+  for (const group of MANAGED_GROUPS) {
+    const aiGroupDir = path.join(targetDir, '.ai', group);
+    const files = listFilesRecursive(aiGroupDir);
+    for (const relFile of files) {
+      const content = fs.readFileSync(path.join(aiGroupDir, relFile), 'utf8');
+      const targetRel = path.posix.join('.github', group, relFile);
+      const targetAbs = path.join(targetDir, targetRel);
+      const wrote = overwrite
+        ? (writeFile(targetAbs, content), true)
+        : ensureFile(targetAbs, content);
+
+      if (wrote) created.push(targetRel);
+      else skipped.push(targetRel);
+    }
+  }
+}
+
 async function generateProject(targetDir, projectName, typeKey, config, opts = {}) {
-  const write = opts.overwrite ? writeFile : ensureFile;
+  const overwrite = Boolean(opts.overwrite);
   const created = [];
   const skipped = [];
+  const catalog = getSourceCatalog();
 
-  function put(relPath, content) {
-    const full = path.join(targetDir, relPath);
-    const wrote = opts.overwrite
-      ? (writeFile(full, content), true)
-      : ensureFile(full, content);
-    if (wrote) created.push(relPath);
-    else skipped.push(relPath);
+  const selections = normalizeSelections(catalog, config.selections || {});
+
+  const configRel = '.ai/project.ai.json';
+  const configAbs = path.join(targetDir, configRel);
+  const configContent = buildProjectConfig(projectName, typeKey, { selections });
+  const configWrote = overwrite
+    ? (writeFile(configAbs, configContent), true)
+    : ensureFile(configAbs, configContent);
+  if (configWrote) created.push(configRel);
+  else skipped.push(configRel);
+
+  const requiredDir = path.join(catalog.sourceRoot, 'Required');
+  copyItemToAi(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
+
+  for (const category of catalog.categories) {
+    const selected = new Set(selections[category.key] || []);
+    for (const item of category.items) {
+      if (!selected.has(item.key)) continue;
+      copyItemToAi(targetDir, item.sourceDir, item.files, overwrite, created, skipped);
+    }
   }
 
-  /* ── Step 1: Resolve capability skills from registry ─────────────────── */
-  console.log('  → Fetching registry skills…');
-  const resolvedSkills = await resolveSkills(
-    config.capabilities || [],
-    typeKey,
-    capabilitySkill,
-  );
+  copyAiToGithub(targetDir, overwrite, created, skipped);
 
-  /* ── Step 2: Write .ai/ (source of truth) ────────────────────────────── */
-  put('.ai/project.ai.json',                    projectConfig(projectName, typeKey, config));
-  put('.ai/instructions/getting-started.md',    gettingStartedInstruction(projectName, typeKey, config));
-  put('.ai/skills/default.md',                  defaultSkill(projectName, typeKey));
-  put('.ai/agents/default.json',                defaultAgent(projectName, config));
+  const readmeRel = 'README.md';
+  const readmeAbs = path.join(targetDir, readmeRel);
+  const readmeContent = readme(projectName, typeKey, { selections });
+  const readmeWrote = overwrite
+    ? (writeFile(readmeAbs, readmeContent), true)
+    : ensureFile(readmeAbs, readmeContent);
+  if (readmeWrote) created.push(readmeRel);
+  else skipped.push(readmeRel);
 
-  for (const [capKey, content] of resolvedSkills) {
-    put(`.ai/skills/${capKey}.md`, content);
+  if (ensureGitignore(targetDir)) {
+    created.push('.gitignore');
   }
-
-  /* ── Step 3: Compile .github/ ────────────────────────────────────────── */
-  put('.github/copilot-instructions.md',        copilotInstructions(projectName, typeKey, config));
-  put('.github/instructions/getting-started.md', gettingStartedInstruction(projectName, typeKey, config));
-  put('.github/skills/default.md',              defaultSkill(projectName, typeKey));
-  put('.github/agents/default.json',            defaultAgent(projectName, config));
-
-  for (const [capKey, content] of resolvedSkills) {
-    put(`.github/skills/${capKey}.md`, content);
-  }
-
-  /* ── Step 4: README ──────────────────────────────────────────────────── */
-  put('README.md', readme(projectName, typeKey, config));
 
   return { created, skipped };
 }
 
-/**
- * Sync an existing project: regenerate `.github/` from `.ai/`.
- * Reads project.ai.json from `.ai/` and re-compiles `.github/`.
- *
- * @param {string} targetDir
- * @returns {Promise<{ created: string[], skipped: string[] }>}
- */
 async function syncProject(targetDir) {
-  const fs = require('node:fs');
   const configPath = path.join(targetDir, '.ai', 'project.ai.json');
 
   if (!fs.existsSync(configPath)) {
     throw new Error(
-      `No .ai/project.ai.json found in ${targetDir}. Run "init" first.`,
+      `No .ai/project.ai.json found in ${targetDir}. Run \"init\" first.`,
     );
   }
 
@@ -93,4 +192,4 @@ async function syncProject(targetDir) {
   return generateProject(targetDir, projectName, typeKey, config, { overwrite: true });
 }
 
-module.exports = { generateProject, syncProject };
+module.exports = { generateProject, syncProject, normalizeSelections };

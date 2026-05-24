@@ -13,7 +13,7 @@ function printUsage() {
     'Commands:',
     '  init      Scaffold a new AI workspace (runs the interactive wizard)',
     '  generate  Regenerate .github/ from .ai/',
-    '  update    Alias for generate',
+    '  update    Update selections and recopy into .ai/ + .github/',
     '',
   ].join('\n'));
 }
@@ -38,11 +38,18 @@ async function main(argv = process.argv.slice(2)) {
       return 0;
     }
 
-    case 'generate':
-    case 'update': {
+    case 'generate': {
       const { sync } = require('../cli/sync');
       const result = await sync(targetDir);
       console.log(`\n✔  .github/ regenerated from .ai/ at ${targetDir}`);
+      console.log(`   Written ${result.created.length} file(s).`);
+      return 0;
+    }
+
+    case 'update': {
+      const { update } = require('../cli/update');
+      const result = await update(targetDir);
+      console.log(`\n✔  AI selections updated at ${targetDir}`);
       console.log(`   Written ${result.created.length} file(s).`);
       return 0;
     }
@@ -63,4 +70,3 @@ if (require.main === module) {
     process.exit(1);
   });
 }
-
