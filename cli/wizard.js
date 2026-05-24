@@ -9,12 +9,18 @@ const { PROJECT_TYPES, PROJECT_TYPE_KEYS } = require('../lib/project-type');
  * @param {{ selections?: Record<string, string[]> }} [defaults]
  */
 async function runWizard(detectedType, catalog, defaults = {}) {
+  const interactive = process.stdin.isTTY;
+
+  if (interactive && typeof console.clear === 'function') {
+    console.clear();
+  }
+
   const rl = createRL();
 
   try {
     let projectType = detectedType;
 
-    if (process.stdin.isTTY) {
+    if (interactive) {
       if (detectedType !== 'empty') {
         const detected = PROJECT_TYPES[detectedType];
         console.log(`\nDetected: ${detected.label}\n`);

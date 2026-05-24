@@ -136,6 +136,66 @@ test('wizard catalog includes capabilities section', () => {
   assert.equal(catalog.categories.some((category) => category.key === 'capabilities'), true);
 });
 
+test('wizard clears the console before interactive prompts', async () => {
+  const wizardPath = require.resolve('../cli/wizard');
+  const promptsPath = require.resolve('../lib/prompts');
+  const originalWizard = require.cache[wizardPath];
+  const originalPrompts = require.cache[promptsPath];
+  const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
+  const originalClear = console.clear;
+  const calls = [];
+
+  require.cache[promptsPath] = {
+    id: promptsPath,
+    filename: promptsPath,
+    loaded: true,
+    exports: {
+      createRL() {
+        calls.push('createRL');
+        return {
+          close() {
+            calls.push('close');
+          },
+        };
+      },
+      async confirm() {
+        calls.push('confirm');
+        return true;
+      },
+      async selectOne() {
+        calls.push('selectOne');
+        return 'empty';
+      },
+      async selectMany() {
+        calls.push('selectMany');
+        return [];
+      },
+    },
+  };
+  delete require.cache[wizardPath];
+  Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true });
+  console.clear = () => {
+    calls.push('clear');
+  };
+
+  try {
+    const { runWizard } = require('../cli/wizard');
+    const result = await runWizard('nodejs', { categories: [] });
+
+    assert.equal(result.projectType, 'nodejs');
+    assert.equal(calls[0], 'clear');
+    assert.ok(calls.indexOf('confirm') > calls.indexOf('clear'));
+  } finally {
+    delete require.cache[wizardPath];
+    if (originalWizard) require.cache[wizardPath] = originalWizard;
+    if (originalPrompts) require.cache[promptsPath] = originalPrompts;
+    else delete require.cache[promptsPath];
+    if (originalStdinTTY) Object.defineProperty(process.stdin, 'isTTY', originalStdinTTY);
+    else delete process.stdin.isTTY;
+    console.clear = originalClear;
+  }
+});
+
 test('update pre-marks installed items, recopies them, and removes deselected files', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
