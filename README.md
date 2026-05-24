@@ -87,7 +87,7 @@ npx github:Caracal-IT/ai update
 │   └── agents/
 ├── .github/                      ← generated Copilot context
 │   ├── instructions/
-│   ├── skills/
+│   ├── skills/                   ← each skill is generated as <name>/SKILL.md
 │   └── agents/
 ├── .gitignore                    ← includes .github AI generated paths
 └── README.md
