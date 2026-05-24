@@ -34,4 +34,4 @@
 - [x] `update [dir]` pre-selects installed items and re-copies all marked items.
 - [x] `generate [dir]` still rebuilds `.github/` from `.ai/project.ai.json`.
 - [x] Automated tests cover init, idempotent re-run, generate, update behavior, setup alias, unknown command.
-- [x] The required feature-documentation skill tells users to confirm understanding, ask for category/sub-category when needed, and save docs as `.feature.md` files under `docs/`.
+- [x] The required feature-documentation skill tells users to confirm understanding, ask for category/sub-category when needed, save docs as `.feature.md` files under `docs/`, allow the user to review and modify the document, and ask whether code implementation should proceed.

@@ -18,6 +18,8 @@ Create and maintain feature specifications as Markdown files in `docs/<category>
 5. Store the file in `docs/<category>/<feature-name>.feature.md` or `docs/<category>/<sub-category>/<feature-name>.feature.md`.
 6. When creating a new feature specification, follow the structure and tone of existing feature documents in the repository when available; otherwise, use the default template below.
 7. Use a kebab-case filename and always end the file with `.feature.md`.
+8. After creating or updating the feature document, present it to the user and allow them to review and modify the file before proceeding with any implementation.
+9. After the user confirms the document is satisfactory, ask whether code implementation should proceed before writing any code.
 
 ## Default Template
 
