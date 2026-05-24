@@ -225,11 +225,6 @@ function clearManagedGithubDirectories(targetDir, previouslyManaged = [], exclud
     const groupDir = path.join(targetDir, '.github', group);
     if (!fs.existsSync(groupDir)) continue;
 
-    if (!insideGitRepo) {
-      fs.rmSync(groupDir, { recursive: true, force: true });
-      continue;
-    }
-
     const files = listFilesRecursive(groupDir);
     for (const relFile of files) {
       const relPath = path.posix.join('.github', group, relFile);
@@ -237,7 +232,11 @@ function clearManagedGithubDirectories(targetDir, previouslyManaged = [], exclud
       // Always remove files that were previously managed by this tool, even if
       // they have since been committed to git. Only preserve git-tracked files
       // that the tool did not create (user-owned files).
-      if (!matchesTrackedEntry(relPath, previouslyManaged) && isGitTrackedFile(targetDir, relPath)) continue;
+      if (
+        insideGitRepo
+        && !matchesTrackedEntry(relPath, previouslyManaged)
+        && isGitTrackedFile(targetDir, relPath)
+      ) continue;
       fs.rmSync(path.join(groupDir, relFile), { force: true });
     }
 
