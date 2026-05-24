@@ -1,6 +1,0 @@
-{
-  "name": "default",
-  "description": "Starter agent for the Caracal-IT/ai CLI project.",
-  "instructions": ["src/required/instructions/getting-started.md"],
-  "skills": ["src/required/skills/default.md"]
-}
