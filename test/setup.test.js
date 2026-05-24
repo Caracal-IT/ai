@@ -32,30 +32,16 @@ test('init creates .ai/ and .github/ structure', () => {
 
   // .ai/ source-of-truth files
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', 'getting-started.md')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'default.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation.md')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'agents', 'default.json')), true);
 
   // .github/ generated layer
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
-  const generatedInstruction = fs.readFileSync(
-    path.join(projectDir, '.github', 'instructions', 'getting-started.md'),
-    'utf8',
-  );
   const generatedSkill = fs.readFileSync(
-    path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md'),
+    path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md'),
     'utf8',
   );
-  const instructionFrontMatter = parseFrontMatter(generatedInstruction);
   const skillFrontMatter = parseFrontMatter(generatedSkill);
-  assert.ok(instructionFrontMatter);
   assert.ok(skillFrontMatter);
-  assert.ok(instructionFrontMatter.name);
-  assert.ok(instructionFrontMatter.description);
-  assert.ok(instructionFrontMatter.whenToUse);
   assert.ok(skillFrontMatter.name);
   assert.ok(skillFrontMatter.description);
   assert.ok(skillFrontMatter.whenToUse);
@@ -78,35 +64,27 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.ok(Array.isArray(config.instructions));
   assert.ok(Array.isArray(config.skills));
   assert.ok(Array.isArray(config.agents));
-
-  const agent = JSON.parse(
-    fs.readFileSync(path.join(projectDir, '.ai', 'agents', 'default.json'), 'utf8'),
-  );
-  assert.deepEqual(agent.skills, [
-    '.ai/skills/default.md',
-    '.ai/skills/feature-documentation.md',
-  ]);
 });
 
 test('init preserves existing files when run again', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-existing-'));
-  const instructionPath = path.join(
+  const skillPath = path.join(
     projectDir,
     '.ai',
-    'instructions',
-    'getting-started.md',
+    'skills',
+    'feature-documentation.md',
   );
 
   // Pre-create the file with custom content
-  fs.mkdirSync(path.dirname(instructionPath), { recursive: true });
-  fs.writeFileSync(instructionPath, '# My custom instruction\n', 'utf8');
+  fs.mkdirSync(path.dirname(skillPath), { recursive: true });
+  fs.writeFileSync(skillPath, '# My custom skill\n', 'utf8');
 
   const output = execFileSync(process.execPath, [cliPath, 'init', projectDir], {
     encoding: 'utf8',
   });
 
   assert.match(output, /Skipped existing [1-9]\d* file\(s\)\./);
-  assert.equal(fs.readFileSync(instructionPath, 'utf8'), '# My custom instruction\n');
+  assert.equal(fs.readFileSync(skillPath, 'utf8'), '# My custom skill\n');
 });
 
 test('init defaults to current directory when no target given', () => {
@@ -140,7 +118,7 @@ test('generate rebuilds .github/ from .ai/', () => {
   );
 
   assert.match(output, /\.github\/ regenerated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
 });
 
 test('wizard catalog includes capabilities section', () => {
