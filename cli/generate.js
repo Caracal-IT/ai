@@ -180,8 +180,9 @@ function removeEmptyDirectories(dirPath) {
   }
 }
 
-function clearManagedGithubDirectories(targetDir) {
+function clearManagedGithubDirectories(targetDir, previouslyManaged = []) {
   const insideGitRepo = isGitRepository(targetDir);
+  const previouslyManagedSet = new Set(previouslyManaged);
 
   for (const group of MANAGED_GROUPS) {
     const groupDir = path.join(targetDir, '.github', group);
@@ -195,7 +196,10 @@ function clearManagedGithubDirectories(targetDir) {
     const files = listFilesRecursive(groupDir);
     for (const relFile of files) {
       const relPath = path.posix.join('.github', group, relFile);
-      if (isGitTrackedFile(targetDir, relPath)) continue;
+      // Always remove files that were previously managed by this tool, even if
+      // they have since been committed to git. Only preserve git-tracked files
+      // that the tool did not create (user-owned files).
+      if (!previouslyManagedSet.has(relPath) && isGitTrackedFile(targetDir, relPath)) continue;
       fs.rmSync(path.join(groupDir, relFile), { force: true });
     }
 
@@ -222,6 +226,10 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   // Carry forward any files the user has already excluded from management.
   const excluded = Array.isArray(config.excluded) ? [...config.excluded] : [];
 
+  // Files previously owned by this tool — used to safely remove them on
+  // overwrite even when they have been committed to git.
+  const previouslyManaged = Array.isArray(config.managed) ? config.managed : [];
+
   // On the very first init (no overwrite, no existing config) record every
   // file already present in .github/ so we never touch them automatically.
   const isFirstInit = !overwrite && !fs.existsSync(resolveConfigPath(targetDir));
@@ -233,7 +241,7 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   }
 
   if (overwrite) {
-    clearManagedGithubDirectories(targetDir);
+    clearManagedGithubDirectories(targetDir, previouslyManaged);
   }
 
   const selections = normalizeSelections(catalog, config.selections || {});

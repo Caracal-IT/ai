@@ -258,6 +258,60 @@ test('update keeps tracked files under managed .github directories', () => {
   assert.equal(fs.existsSync(trackedFile), true);
 });
 
+test('update removes git-tracked managed files when item is deselected', () => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-deselect-tracked-'));
+  execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
+
+  // Find a selectable item to add then remove
+  const catalog = getSourceCatalog();
+  const category = catalog.categories.find((entry) => entry.items.length > 0);
+  assert.ok(category);
+  const item = category.items.find((entry) => (
+    entry.files.instructions.length > 0
+    || entry.files.skills.length > 0
+    || entry.files.agents.length > 0
+  ));
+  assert.ok(item);
+  const fileGroup = item.files.instructions.length > 0
+    ? 'instructions'
+    : item.files.skills.length > 0
+      ? 'skills'
+      : 'agents';
+  const selectedFile = item.files[fileGroup][0];
+  assert.ok(selectedFile);
+
+  // Select the item and run update so the file is generated
+  const configPath = path.join(projectDir, 'project.ai.json');
+  let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.selections = { [category.key]: [item.key] };
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  const managedFilePath = path.join(projectDir, githubManagedPath(fileGroup, selectedFile));
+  assert.equal(fs.existsSync(managedFilePath), true, 'file must exist after selection');
+
+  // Simulate the user committing the generated file to git
+  execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
+  execFileSync('git', ['add', '-f', '--', githubManagedPath(fileGroup, selectedFile)], { cwd: projectDir, stdio: 'ignore' });
+
+  // Deselect the item and run update — file must be removed even though it is git-tracked
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.selections = { [category.key]: [] };
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  assert.equal(fs.existsSync(managedFilePath), false, 'deselected managed file must be removed even when git-tracked');
+
+  // project.ai.json managed list must not contain the removed file
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const managedRel = githubManagedPath(fileGroup, selectedFile).split(path.sep).join('/');
+  assert.equal(
+    config.managed.includes(managedRel),
+    false,
+    'project.ai.json managed list must not contain the deselected file',
+  );
+});
+
 /* ─────────────────────────────────────────────────────────────────────────────
    project.ai.json root placement and excluded/managed tracking
    ──────────────────────────────────────────────────────────────────────────── */
