@@ -20,11 +20,6 @@ async function init(targetDir) {
   const detectedType = detect(targetDir);
   const catalog = getSourceCatalog();
 
-  if (process.stdin.isTTY && detectedType !== 'empty') {
-    const { PROJECT_TYPES } = require('../lib/project-type');
-    console.log(`\n  Detected: ${PROJECT_TYPES[detectedType].label}`);
-  }
-
   const wizardResult = await runWizard(detectedType, catalog);
   const { projectType, selections } = wizardResult;
   const projectName = path.basename(targetDir);
