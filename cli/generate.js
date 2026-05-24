@@ -40,11 +40,11 @@ function buildProjectConfig(projectName, typeKey, config = {}) {
       version: 3,
       type: typeKey,
       selections: config.selections || {},
-      sourceRoot: '.ai',
+      sourceRoot: '.github',
       generatedRoot: '.github',
-      instructions: ['.ai/instructions/'],
-      skills: ['.ai/skills/'],
-      agents: ['.ai/agents/'],
+      instructions: ['.github/instructions/'],
+      skills: ['.github/skills/'],
+      agents: ['.github/agents/'],
       excluded: config.excluded || [],
       managed: config.managed || [],
     },
@@ -107,58 +107,30 @@ function normalizeSelections(catalog, inputSelections = {}) {
   return normalized;
 }
 
-function copyGroupFiles({ targetDir, srcRoot, destinationRoot, group, files, overwrite, created, skipped }) {
-  for (const relFile of files) {
-    const content = fs.readFileSync(path.join(srcRoot, group, relFile), 'utf8');
-    const targetRel = path.posix.join(destinationRoot, group, relFile);
-    const targetAbs = path.join(targetDir, targetRel);
-    const wrote = overwrite
-      ? (writeFile(targetAbs, content), true)
-      : ensureFile(targetAbs, content);
-
-    if (wrote) created.push(targetRel);
-    else skipped.push(targetRel);
+function githubTargetRelFor(group, relFile) {
+  if (group === 'skills' && relFile.toLowerCase().endsWith('.md')) {
+    const basename = path.posix.basename(relFile).toLowerCase();
+    if (basename === 'skill.md') {
+      // Already in folder-based format: keep path as-is
+      return path.posix.join('.github', group, relFile);
+    }
+    if (!relFile.includes('/')) {
+      // Flat legacy format (e.g. my-skill.md) → my-skill/SKILL.md
+      const parsed = path.posix.parse(relFile);
+      return path.posix.join('.github', group, parsed.name, 'SKILL.md');
+    }
+    // Supporting file inside a skill folder (e.g. templates/…), copy as-is
+    return path.posix.join('.github', group, relFile);
   }
+
+  return path.posix.join('.github', group, relFile);
 }
 
-function copyItemToAi(targetDir, sourceDir, files, overwrite, created, skipped) {
+function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipped) {
   for (const group of MANAGED_GROUPS) {
-    copyGroupFiles({
-      targetDir,
-      srcRoot: sourceDir,
-      destinationRoot: '.ai',
-      group,
-      files: files[group],
-      overwrite,
-      created,
-      skipped,
-    });
-  }
-}
-
-function copyAiToGithub(targetDir, overwrite, created, skipped) {
-  for (const group of MANAGED_GROUPS) {
-    const aiGroupDir = path.join(targetDir, '.ai', group);
-    const files = listFilesRecursive(aiGroupDir);
-    for (const relFile of files) {
-      const content = fs.readFileSync(path.join(aiGroupDir, relFile), 'utf8');
-      let targetRel;
-      if (group === 'skills' && relFile.toLowerCase().endsWith('.md')) {
-        const basename = path.posix.basename(relFile).toLowerCase();
-        if (basename === 'skill.md') {
-          // Already in folder-based format: keep path as-is
-          targetRel = path.posix.join('.github', group, relFile);
-        } else if (!relFile.includes('/')) {
-          // Flat legacy format (e.g. my-skill.md) → my-skill/SKILL.md
-          const parsed = path.posix.parse(relFile);
-          targetRel = path.posix.join('.github', group, parsed.name, 'SKILL.md');
-        } else {
-          // Supporting file inside a skill folder (e.g. templates/…), copy as-is
-          targetRel = path.posix.join('.github', group, relFile);
-        }
-      } else {
-        targetRel = path.posix.join('.github', group, relFile);
-      }
+    for (const relFile of files[group]) {
+      const content = fs.readFileSync(path.join(sourceDir, group, relFile), 'utf8');
+      const targetRel = githubTargetRelFor(group, relFile);
       const targetAbs = path.join(targetDir, targetRel);
       const wrote = overwrite
         ? (writeFile(targetAbs, content), true)
@@ -205,12 +177,6 @@ function removeEmptyDirectories(dirPath) {
 
   if (fs.readdirSync(dirPath).length === 0) {
     fs.rmdirSync(dirPath);
-  }
-}
-
-function clearManagedAiDirectories(targetDir) {
-  for (const group of MANAGED_GROUPS) {
-    fs.rmSync(path.join(targetDir, '.ai', group), { recursive: true, force: true });
   }
 }
 
@@ -267,7 +233,6 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   }
 
   if (overwrite) {
-    clearManagedAiDirectories(targetDir);
     clearManagedGithubDirectories(targetDir);
   }
 
@@ -285,17 +250,15 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   else skipped.push(CONFIG_REL);
 
   const requiredDir = path.join(catalog.sourceRoot, 'required');
-  copyItemToAi(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
+  copyItemToGithub(targetDir, requiredDir, catalog.required, overwrite, created, skipped);
 
   for (const category of catalog.categories) {
     const selected = new Set(selections[category.key] || []);
     for (const item of category.items) {
       if (!selected.has(item.key)) continue;
-      copyItemToAi(targetDir, item.sourceDir, item.files, overwrite, created, skipped);
+      copyItemToGithub(targetDir, item.sourceDir, item.files, overwrite, created, skipped);
     }
   }
-
-  copyAiToGithub(targetDir, overwrite, created, skipped);
 
   // Build the authoritative managed list from what is now in the managed
   // group directories under .github/.

@@ -8,8 +8,6 @@ const { writeFile } = require('../lib/fs');
 const { createRL, confirm } = require('../lib/prompts');
 
 async function update(targetDir) {
-  fs.mkdirSync(path.join(targetDir, '.ai'), { recursive: true });
-
   const configPath = resolveConfigPath(targetDir);
   let existing = {};
   if (fs.existsSync(configPath)) {

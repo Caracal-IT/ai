@@ -6,7 +6,7 @@
 - [x] Remove hard-coded architecture/testing/logging wizard steps.
 - [x] Drive wizard sections from `src/<category>/<item>/` folder structure.
 - [x] Add `src/required/` that is always installed.
-- [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.ai/` and `.github/`.
+- [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.github/`.
 - [x] Keep pre-existing `.github/` files untouched on init (record them as `excluded`).
 - [x] Add `src/language/go/instructions/go.best-practices.instructions.md`.
 - [x] Add `src/language/kotlin/instructions/kotlin.best-practices.instructions.md`.
@@ -23,7 +23,7 @@
 - [x] The wizard detects project type and allows confirmation/change.
 - [x] The wizard shows category sections using folder names from `src/`.
 - [x] The wizard shows selectable sub-folder items with checkbox selection (spacebar/pointer).
-- [x] `.ai/` is created first and used as source before `.github/` compilation.
+- [x] `init` generates `.github/` directly from selected `src/` items.
 - [x] `src/required` content is always installed.
 - [x] Running `update` pre-marks installed items and recopies marked selections.
 - [x] Files already in `.github/` when `init` runs are recorded as `excluded` and never modified.
@@ -35,8 +35,8 @@
 ## Acceptance Criteria
 
 - [x] `init [dir]` creates `project.ai.json` at the project root with `excluded`, `managed`, `version: 3`.
-- [x] `init [dir]` creates `.ai/instructions/`, `.ai/skills/`, `.ai/agents/`.
-- [x] `init [dir]` generates `.github/instructions/`, `.github/skills/`, `.github/agents/` from `.ai/`.
+- [x] `init [dir]` does not create a `.ai/` folder.
+- [x] `init [dir]` generates `.github/instructions/`, `.github/skills/`, `.github/agents/` from `src/` selections.
 - [x] `init [dir]` records pre-existing `.github/` files in `excluded` (does not modify them).
 - [x] `init [dir]` records generated `.github/` files in `managed`.
 - [x] `init [dir]` removes `.github/{instructions,skills,agents}/` ignore lines from `.gitignore` if present.

@@ -1,7 +1,7 @@
 const { syncProject } = require('./generate');
 
 /**
- * Sync command: regenerate .github/ from .ai/ in targetDir.
+ * Sync command: regenerate .github/ in targetDir.
  *
  * @param {string} targetDir – absolute path
  */

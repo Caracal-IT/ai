@@ -1,8 +1,8 @@
 # ai
 
 `ai` is an npm-style CLI that bootstraps a structured AI workspace for any project.
-It now reads the wizard layout directly from the repository `src/` folder and copies
-selected items into `.ai/` first, then generates `.github/` from `.ai/`.
+It reads the wizard layout directly from the repository `src/` folder and generates
+`.github/` content from the selected items.
 
 ## Repository Structure
 
@@ -16,7 +16,7 @@ test/         Automated tests
 
 ## Source Layout (`src/`)
 
-- `src/required/` → always copied into `.ai/` and `.github/`
+- `src/required/` → always copied into `.github/`
 - `src/<category>/<item>/` → wizard sections and selectable items
 - Each item can contain:
   - `instructions/**`
@@ -51,7 +51,7 @@ npx github:Caracal-IT/ai init
 # Initialise in a specific directory
 npx github:Caracal-IT/ai init ./my-project
 
-# Regenerate .github/ from .ai/
+# Regenerate .github/
 npx github:Caracal-IT/ai generate
 
 # Update selections (pre-marks installed items and recopies them)
@@ -61,12 +61,12 @@ npx github:Caracal-IT/ai update
 ## What `init` does
 
 1. Detects project type.
-2. Creates `.ai/` first.
+2. Prepares `.github/` managed paths.
 3. Records any files already in `.github/` as `excluded` in `project.ai.json` (they are never modified).
 4. Reads `src/` folder structure (no hard-coded wizard structure).
 5. Prompts by category and lets users select items via checkbox controls.
-6. Copies `src/required` and selected category items into `.ai/`.
-7. Compiles `.github/{instructions,skills,agents}` from `.ai/`.
+6. Copies `src/required` and selected category items into `.github/`.
+7. Compiles `.github/{instructions,skills,agents}` directly from `src/` selections.
 8. Records all generated `.github/` files in the `managed` list inside `project.ai.json`.
 9. Cleans up old `.github/` ignore entries from `.gitignore` so every file in `.github/` is source-controlled.
 10. Creates project `README.md`.
@@ -79,7 +79,7 @@ and updating `docs/.../*.feature.md` files with an inline default template.
 1. Reads existing `project.ai.json` (or falls back to legacy `.ai/project.ai.json`).
 2. Opens the same category wizard with already-installed items pre-marked.
 3. Re-copies all marked items, including items already copied before.
-4. Rebuilds `.github/` from `.ai/`.
+4. Rebuilds `.github/` from selected `src/` items.
 5. Scans `.github/` for files that are neither in `managed` nor in `excluded`.
 6. For each unknown file, prompts: **Delete it?**
    - **Yes** → deletes the file.
@@ -90,10 +90,6 @@ and updating `docs/.../*.feature.md` files with an inline default template.
 ```
 <project>/
 ├── project.ai.json               ← config + managed/excluded tracking (root)
-├── .ai/                          ← source of truth used by the generator
-│   ├── instructions/
-│   ├── skills/
-│   └── agents/
 ├── .github/                      ← Copilot context (fully source-controlled)
 │   ├── instructions/
 │   ├── skills/                   ← each skill is generated as <name>/SKILL.md
