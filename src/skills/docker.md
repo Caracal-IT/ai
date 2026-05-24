@@ -1,3 +1,8 @@
+---
+name: "Docker Support"
+description: "Containerise the application for consistent, portable deployments."
+---
+
 # Skill: Docker Support
 
 ## Description

@@ -1,3 +1,7 @@
+---
+applyTo: "**"
+---
+
 # Getting Started – Caracal-IT/ai CLI
 
 ## Stack

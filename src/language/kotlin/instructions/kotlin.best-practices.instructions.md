@@ -1,3 +1,7 @@
+---
+applyTo: "**/*.kt,**/*.kts"
+---
+
 # Kotlin Best Practices
 
 ## Code Quality

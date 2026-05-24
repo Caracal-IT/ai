@@ -1,3 +1,8 @@
+---
+name: "Authentication"
+description: "Implement secure, standards-based authentication."
+---
+
 # Skill: Authentication
 
 ## Description

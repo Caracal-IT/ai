@@ -1,3 +1,7 @@
+---
+applyTo: "**/*.go"
+---
+
 # Go Best Practices
 
 ## Code Quality

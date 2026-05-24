@@ -1,3 +1,8 @@
+---
+name: "Database (SQL)"
+description: "Integrate a relational database following best practices."
+---
+
 # Skill: Database (SQL)
 
 ## Description
