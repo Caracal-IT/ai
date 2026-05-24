@@ -58,13 +58,19 @@ npx github:Caracal-IT/ai generate
 npx github:Caracal-IT/ai update
 ```
 
-### Windows 11 note for `npx github:...`
+### Windows (PowerShell)
 
-If `npx github:Caracal-IT/ai ...` fails with:
+On a fresh Windows install the npm global-prefix directory may not exist,
+causing an `ENOENT` error. Use the included bootstrap script instead — it
+creates the directory automatically and forwards all arguments:
 
-`ENOENT: no such file or directory, lstat 'C:\Users\<you>\AppData\Roaming\npm'`
+```powershell
+# Download and run the bootstrap script
+Invoke-RestMethod https://raw.githubusercontent.com/Caracal-IT/ai/main/setup.ps1 -OutFile setup.ps1
+.\setup.ps1 init ./my-project
+```
 
-create the missing npm roaming folder once, then rerun the command:
+Or fix it once manually:
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:APPDATA\npm" | Out-Null
