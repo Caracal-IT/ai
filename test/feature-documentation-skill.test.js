@@ -26,7 +26,7 @@ test('required feature documentation skill describes the requested workflow and 
   assert.match(content, /optional sub-category/i);
   assert.match(content, /docs\/<category>\/<feature-name>\.feature\.md/);
   assert.match(content, /docs\/<category>\/<sub-category>\/<feature-name>\.feature\.md/);
-  assert.match(content, /docs\/features\/feature-template\.feature\.md/);
+  assert.match(content, /templates\/feature-documentation\/feature-template\.feature\.md/);
   assert.match(content, /always end the file with `\.feature\.md`/);
 });
 
@@ -34,8 +34,8 @@ test('feature documentation template example lives in a standalone markdown file
   const file = path.resolve(
     __dirname,
     '..',
-    'docs',
-    'features',
+    'templates',
+    'feature-documentation',
     'feature-template.feature.md',
   );
   const content = fs.readFileSync(file, 'utf8');

@@ -71,7 +71,7 @@ npx github:Caracal-IT/ai update
 
 Required starter content includes a `feature-documentation` skill for creating
 and updating `docs/.../*.feature.md` files. `init` does not scaffold a
-`docs/` directory or `docs/features/feature-template.feature.md` by default.
+`docs/` directory or `templates/feature-documentation/feature-template.feature.md` by default.
 
 ## What `update` does
 
