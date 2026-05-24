@@ -1,7 +1,6 @@
 ---
 name: "kotlin-best-practices"
 description: "Kotlin coding and testing standards for this repository."
-whenToUse: "Use when making changes to files covered by this instruction."
 applyTo: "**/*.kt,**/*.kts"
 ---
 

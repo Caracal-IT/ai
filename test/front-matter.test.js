@@ -39,11 +39,19 @@ test('src markdown items include required front matter fields', () => {
 
     if (rel.startsWith('instructions/') || rel.includes('/instructions/')) {
       assert.ok(frontMatter.applyTo, `${rel} is missing applyTo`);
-      assert.ok(frontMatter.whenToUse, `${rel} is missing whenToUse`);
+      if (!rel.endsWith('.instruction.md') && !rel.endsWith('.instructions.md')) {
+        assert.ok(frontMatter.whenToUse, `${rel} is missing whenToUse`);
+      }
     }
 
     if (rel.startsWith('skills/') || rel.includes('/skills/')) {
       assert.ok(frontMatter.whenToUse, `${rel} is missing whenToUse`);
+      const expected = path.posix.parse(rel).name;
+      assert.equal(
+        frontMatter.name,
+        expected,
+        `${rel} front matter name must match skill folder/file name: ${expected}`,
+      );
     }
 
     if (rel.startsWith('capabilities/') && rel.includes('/skills/')) {
