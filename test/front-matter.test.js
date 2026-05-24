@@ -68,10 +68,14 @@ test('src markdown items include required front matter fields', () => {
 
     const managedPath = parseManagedMarkdownPath(rel);
     if (managedPath && managedPath.category !== 'required') {
+      if (managedPath.group === 'skills') {
+        assert.equal(managedPath.fileName, 'SKILL.md', `${rel} must be named SKILL.md`);
+        continue;
+      }
+
       const expectedPrefix = `${managedPath.category}.${managedPath.item}.`;
       const expectedSuffixByGroup = {
         instructions: '.instruktion.md',
-        skills: '.skill.md',
         agents: '.agent.md',
       };
       const expectedSuffix = expectedSuffixByGroup[managedPath.group];
