@@ -67,8 +67,10 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.ok(skillFrontMatter);
   assert.ok(instructionFrontMatter.name);
   assert.ok(instructionFrontMatter.description);
+  assert.ok(instructionFrontMatter.whenToUse);
   assert.ok(skillFrontMatter.name);
   assert.ok(skillFrontMatter.description);
+  assert.ok(skillFrontMatter.whenToUse);
   assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
   const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
   assert.match(gitignore, /^\.github\/instructions\/$/m);

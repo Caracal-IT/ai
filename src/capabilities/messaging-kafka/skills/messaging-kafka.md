@@ -1,6 +1,7 @@
 ---
 name: "messaging-kafka"
 description: "Integrate with Apache Kafka for event-driven communication."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 

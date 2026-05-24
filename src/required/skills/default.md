@@ -1,6 +1,7 @@
 ---
 name: "default"
 description: "Starter skill definition for reusable AI tasks in this CLI project."
+whenToUse: "Use when the task requires this skill capability."
 ---
 
 # Skill: Default

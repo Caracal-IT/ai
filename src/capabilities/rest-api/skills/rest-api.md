@@ -1,6 +1,7 @@
 ---
 name: "rest-api-standards"
 description: "Design and implement RESTful HTTP APIs that are consistent, discoverable, and versioned."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 

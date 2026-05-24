@@ -1,6 +1,7 @@
 ---
 name: "docker-support"
 description: "Containerise the application for consistent, portable deployments."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 

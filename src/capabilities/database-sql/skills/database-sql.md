@@ -1,6 +1,7 @@
 ---
 name: "database-sql"
 description: "Integrate a relational database following best practices."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 
