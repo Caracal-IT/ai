@@ -33,6 +33,10 @@ test('init creates .ai/ and .github/ structure', () => {
   // .ai/ source-of-truth files
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation.md')), true);
+  assert.equal(
+    fs.existsSync(path.join(projectDir, 'templates', 'feature-documentation', 'feature-template.feature.md')),
+    false,
+  );
 
   // .github/ generated layer
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
