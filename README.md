@@ -69,6 +69,9 @@ npx github:Caracal-IT/ai update
 7. Updates `.gitignore` to ignore copied generated `.github` AI files.
 8. Creates project `README.md`.
 
+Required starter content includes a `feature-documentation` skill for creating
+and updating `docs/.../*.feature.md` files with an inline default template.
+
 ## What `update` does
 
 1. Reads existing `.ai/project.ai.json`.
