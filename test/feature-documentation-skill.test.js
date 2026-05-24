@@ -12,7 +12,8 @@ test('required feature documentation skill describes the requested workflow and 
     'src',
     'required',
     'skills',
-    'feature-documentation.md',
+    'feature-documentation',
+    'SKILL.md',
   );
   const content = fs.readFileSync(file, 'utf8');
   const frontMatter = parseFrontMatter(content);
@@ -38,9 +39,12 @@ test('feature documentation template example lives in a standalone markdown file
   const file = path.resolve(
     __dirname,
     '..',
-    'templates',
+    'src',
+    'required',
+    'skills',
     'feature-documentation',
-    'feature-template.feature.md',
+    'templates',
+    'feature.template.md',
   );
   const content = fs.readFileSync(file, 'utf8');
 

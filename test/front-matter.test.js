@@ -25,6 +25,11 @@ test('src markdown items include required front matter fields', () => {
 
   for (const file of markdownFiles) {
     const rel = path.relative(srcDir, file).split(path.sep).join('/');
+    const parts = rel.split('/');
+
+    // Skip template files nested inside skill folders
+    if (rel.includes('/skills/') && parts.includes('templates')) continue;
+
     const content = fs.readFileSync(file, 'utf8');
     const frontMatter = parseFrontMatter(content);
 
@@ -46,7 +51,11 @@ test('src markdown items include required front matter fields', () => {
 
     if (rel.startsWith('skills/') || rel.includes('/skills/')) {
       assert.ok(frontMatter.whenToUse, `${rel} is missing whenToUse`);
-      const expected = path.posix.parse(rel).name;
+      // For folder-based skills (SKILL.md), the expected name is the parent folder name
+      const basename = path.posix.basename(rel).toLowerCase();
+      const expected = basename === 'skill.md'
+        ? path.posix.basename(path.posix.dirname(rel))
+        : path.posix.parse(rel).name;
       assert.equal(
         frontMatter.name,
         expected,

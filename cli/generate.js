@@ -119,15 +119,23 @@ function copyAiToGithub(targetDir, overwrite, created, skipped) {
     const files = listFilesRecursive(aiGroupDir);
     for (const relFile of files) {
       const content = fs.readFileSync(path.join(aiGroupDir, relFile), 'utf8');
-      const targetRel = group === 'skills' && relFile.toLowerCase().endsWith('.md')
-        ? path.posix.join(
-          '.github',
-          group,
-          path.posix.dirname(relFile),
-          path.posix.parse(relFile).name,
-          'SKILL.md',
-        )
-        : path.posix.join('.github', group, relFile);
+      let targetRel;
+      if (group === 'skills' && relFile.toLowerCase().endsWith('.md')) {
+        const basename = path.posix.basename(relFile).toLowerCase();
+        if (basename === 'skill.md') {
+          // Already in folder-based format: keep path as-is
+          targetRel = path.posix.join('.github', group, relFile);
+        } else if (!relFile.includes('/')) {
+          // Flat legacy format (e.g. my-skill.md) → my-skill/SKILL.md
+          const parsed = path.posix.parse(relFile);
+          targetRel = path.posix.join('.github', group, parsed.name, 'SKILL.md');
+        } else {
+          // Supporting file inside a skill folder (e.g. templates/…), copy as-is
+          targetRel = path.posix.join('.github', group, relFile);
+        }
+      } else {
+        targetRel = path.posix.join('.github', group, relFile);
+      }
       const targetAbs = path.join(targetDir, targetRel);
       const wrote = overwrite
         ? (writeFile(targetAbs, content), true)

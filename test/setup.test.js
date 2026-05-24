@@ -13,9 +13,18 @@ function githubManagedPath(fileGroup, relFile) {
   const parts = relFile.split('/');
   if (fileGroup !== 'skills') return path.join('.github', fileGroup, ...parts);
 
-  const parsed = path.posix.parse(relFile);
-  const dirParts = parsed.dir ? parsed.dir.split('/') : [];
-  return path.join('.github', 'skills', ...dirParts, parsed.name, 'SKILL.md');
+  const basename = path.posix.basename(relFile).toLowerCase();
+  if (basename === 'skill.md') {
+    // Already folder-based: keep as-is
+    return path.join('.github', 'skills', ...parts);
+  }
+  if (!relFile.includes('/')) {
+    // Flat legacy format → folder/SKILL.md
+    const parsed = path.posix.parse(relFile);
+    return path.join('.github', 'skills', parsed.name, 'SKILL.md');
+  }
+  // Supporting file inside a skill folder, copy as-is
+  return path.join('.github', 'skills', ...parts);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -32,7 +41,7 @@ test('init creates .ai/ and .github/ structure', () => {
 
   // .ai/ source-of-truth files
   assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'project.ai.json')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'feature-documentation', 'SKILL.md')), true);
 
   // .github/ generated layer
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
@@ -72,7 +81,8 @@ test('init preserves existing files when run again', () => {
     projectDir,
     '.ai',
     'skills',
-    'feature-documentation.md',
+    'feature-documentation',
+    'SKILL.md',
   );
 
   // Pre-create the file with custom content
