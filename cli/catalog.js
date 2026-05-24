@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
 const LEGACY_DIRS = new Set(MANAGED_GROUPS);
+const HIDDEN_CATEGORIES = new Set(['capabilities']);
 
 function toLabel(value) {
   return value
@@ -58,6 +59,7 @@ function getSourceCatalog(sourceRoot = path.resolve(__dirname, '..', 'src')) {
     if (!categoryEntry.isDirectory()) continue;
     if (categoryEntry.name === 'Required') continue;
     if (LEGACY_DIRS.has(categoryEntry.name)) continue;
+    if (HIDDEN_CATEGORIES.has(categoryEntry.name)) continue;
 
     const categoryPath = path.join(sourceRoot, categoryEntry.name);
     const items = [];

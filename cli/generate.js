@@ -130,11 +130,23 @@ function copyAiToGithub(targetDir, overwrite, created, skipped) {
   }
 }
 
+function clearManagedDirectories(targetDir, roots) {
+  for (const root of roots) {
+    for (const group of MANAGED_GROUPS) {
+      fs.rmSync(path.join(targetDir, root, group), { recursive: true, force: true });
+    }
+  }
+}
+
 async function generateProject(targetDir, projectName, typeKey, config, opts = {}) {
   const overwrite = Boolean(opts.overwrite);
   const created = [];
   const skipped = [];
   const catalog = getSourceCatalog();
+
+  if (overwrite) {
+    clearManagedDirectories(targetDir, ['.ai', '.github']);
+  }
 
   const selections = normalizeSelections(catalog, config.selections || {});
 

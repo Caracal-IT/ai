@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const { execFileSync } = require('node:child_process');
+const { getSourceCatalog } = require('../cli/catalog');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
@@ -105,25 +106,38 @@ test('generate rebuilds .github/ from .ai/', () => {
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
 });
 
-test('update pre-marks installed items and recopies them', () => {
+test('wizard catalog excludes capabilities section', () => {
+  const catalog = getSourceCatalog();
+  assert.equal(catalog.categories.some((category) => category.key === 'capabilities'), false);
+});
+
+test('update pre-marks installed items, recopies them, and removes deselected files', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   const configPath = path.join(projectDir, '.ai', 'project.ai.json');
+  const goInstruction = 'go.best-practices.instructions.md';
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  config.selections = { capabilities: ['authentication'] };
+  config.selections = { language: ['go'] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
-  fs.rmSync(path.join(projectDir, '.ai', 'skills', 'authentication.md'), { force: true });
-  fs.rmSync(path.join(projectDir, '.github', 'skills', 'authentication.md'), { force: true });
+  fs.rmSync(path.join(projectDir, '.ai', 'instructions', goInstruction), { force: true });
+  fs.rmSync(path.join(projectDir, '.github', 'instructions', goInstruction), { force: true });
 
   const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
     encoding: 'utf8',
   });
 
   assert.match(output, /AI selections updated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'skills', 'authentication.md')), true);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'authentication.md')), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', goInstruction)), true);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', goInstruction)), true);
+
+  config.selections = { language: [] };
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
+
+  assert.equal(fs.existsSync(path.join(projectDir, '.ai', 'instructions', goInstruction)), false);
+  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', goInstruction)), false);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
