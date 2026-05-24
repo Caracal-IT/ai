@@ -6,6 +6,15 @@
   "bin": {
     "ai": "./bin/ai.js"
   },
+  "files": [
+    "bin/",
+    "cli/",
+    "lib/",
+    "src/",
+    "templates/",
+    "setup.ps1",
+    "setup.sh"
+  ],
   "scripts": {
     "test": "node --test"
   },
