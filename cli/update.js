@@ -5,6 +5,7 @@ const { runWizard } = require('./wizard');
 const {
   addTrackedPath,
   generateProject,
+  githubTargetRelFor,
   listGithubFiles,
   matchesTrackedEntry,
   normalizeSelections,
@@ -29,12 +30,43 @@ async function update(targetDir) {
   const wizardResult = await runWizard(detectedType, catalog, defaults);
   const projectType = wizardResult.projectType || detectedType;
   const projectName = existing.name || path.basename(targetDir);
+  const existingManaged = existing.managed || [];
+  const existingExcluded = existing.excluded || [];
+  const knownManagedTargets = new Set();
+
+  for (const group of ['instructions', 'skills', 'agents']) {
+    for (const relFile of catalog.required[group]) {
+      knownManagedTargets.add(githubTargetRelFor(group, relFile));
+    }
+  }
+  for (const category of catalog.categories) {
+    for (const item of category.items) {
+      for (const group of ['instructions', 'skills', 'agents']) {
+        for (const relFile of item.files[group]) {
+          knownManagedTargets.add(githubTargetRelFor(group, relFile));
+        }
+      }
+    }
+  }
+
+  // Seed excluded with any pre-existing .github files that are not tracked in
+  // project.ai.json, so overwrite does not delete them before they can be
+  // persisted.
+  const seededExcluded = new Set(existingExcluded);
+  const unknownBeforeGenerate = listGithubFiles(targetDir).filter(
+    (f) => !matchesTrackedEntry(f, existingManaged)
+      && !matchesTrackedEntry(f, existingExcluded)
+      && !knownManagedTargets.has(f),
+  );
+  for (const file of unknownBeforeGenerate) {
+    addTrackedPath(seededExcluded, file);
+  }
 
   const result = await generateProject(
     targetDir,
     projectName,
     projectType,
-    { selections: wizardResult.selections, excluded: existing.excluded || [], managed: existing.managed || [] },
+    { selections: wizardResult.selections, excluded: [...seededExcluded], managed: existingManaged },
     { overwrite: true },
   );
 

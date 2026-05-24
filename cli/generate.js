@@ -173,6 +173,7 @@ function githubTargetRelFor(group, relFile) {
 }
 
 function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipped, excluded = []) {
+  const copied = [];
   for (const group of MANAGED_GROUPS) {
     for (const relFile of files[group]) {
       const content = fs.readFileSync(path.join(sourceDir, group, relFile), 'utf8');
@@ -188,8 +189,10 @@ function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipp
 
       if (wrote) created.push(targetRel);
       else skipped.push(targetRel);
+      copied.push(targetRel);
     }
   }
+  return copied;
 }
 
 function isGitRepository(targetDir) {
@@ -315,23 +318,34 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   else skipped.push(CONFIG_REL);
 
   const requiredDir = path.join(catalog.sourceRoot, 'required');
-  copyItemToGithub(targetDir, requiredDir, catalog.required, overwrite, created, skipped, [...excludedSet]);
+  const managedSet = new Set();
+  for (const copied of copyItemToGithub(
+    targetDir,
+    requiredDir,
+    catalog.required,
+    overwrite,
+    created,
+    skipped,
+    [...excludedSet],
+  )) {
+    addTrackedPath(managedSet, copied);
+  }
 
   for (const category of catalog.categories) {
     const selected = new Set(selections[category.key] || []);
     for (const item of category.items) {
       if (!selected.has(item.key)) continue;
-      copyItemToGithub(targetDir, item.sourceDir, item.files, overwrite, created, skipped, [...excludedSet]);
-    }
-  }
-
-  // Build the authoritative managed list from what is now in the managed
-  // group directories under .github/.
-  const managedSet = new Set();
-  for (const group of MANAGED_GROUPS) {
-    const groupDir = path.join(targetDir, '.github', group);
-    for (const f of listFilesRecursive(groupDir)) {
-      addTrackedPath(managedSet, path.posix.join('.github', group, f));
+      for (const copied of copyItemToGithub(
+        targetDir,
+        item.sourceDir,
+        item.files,
+        overwrite,
+        created,
+        skipped,
+        [...excludedSet],
+      )) {
+        addTrackedPath(managedSet, copied);
+      }
     }
   }
   const excluded = compactTrackedEntries([...excludedSet]);
@@ -373,6 +387,7 @@ async function syncProject(targetDir) {
 module.exports = {
   addTrackedPath,
   generateProject,
+  githubTargetRelFor,
   listGithubFiles,
   matchesTrackedEntry,
   normalizeSelections,
