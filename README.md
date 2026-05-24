@@ -1,18 +1,43 @@
 # ai
 
 `ai` is an npm-style CLI that bootstraps a structured AI workspace for any project.
-It scaffolds `.ai/` as the **source of truth** and generates `.github/` as the
-**Copilot consumption layer**, keeping your AI context versioned and reproducible.
+It now reads the wizard layout directly from the repository `src/` folder and copies
+selected items into `.ai/` first, then generates `.github/` from `.ai/`.
 
 ## Repository Structure
 
 ```
 bin/          CLI entry point
-cli/          Command modules (init, detect, wizard, registry, generate, sync)
-lib/          Shared utilities (fs, git, prompts, templates, project-type)
-src/          Source-of-truth AI context for this CLI project itself
-templates/    Starter file templates used during scaffolding
+cli/          Command modules (init, detect, wizard, generate, sync, update)
+lib/          Shared utilities (fs, prompts, templates, project-type)
+src/          Wizard source content (Required + category/item folders)
 test/         Automated tests
+```
+
+## Source Layout (`src/`)
+
+- `src/Required/` → always copied into `.ai/` and `.github/`
+- `src/<category>/<item>/` → wizard sections and selectable items
+- Each item can contain:
+  - `instructions/**`
+  - `skills/**`
+  - `agents/**`
+
+Example:
+
+```
+src/
+├── Required/
+│   ├── instructions/
+│   ├── skills/
+│   └── agents/
+├── capabilities/
+│   ├── authentication/
+│   │   └── skills/
+│   └── ...
+└── language/
+    └── go/
+        └── instructions/go.best-practices.instructions.md
 ```
 
 ## Usage
@@ -27,43 +52,53 @@ npx github:Caracal-IT/ai init ./my-project
 # Regenerate .github/ from .ai/
 npx github:Caracal-IT/ai generate
 
-# Update an existing AI workspace (alias for generate)
+# Update selections (pre-marks installed items and recopies them)
 npx github:Caracal-IT/ai update
 ```
 
 ## What `init` does
 
-1. **Detects** the project type from the filesystem (Node.js, Go, Java, C#, Python, Rust).
-2. **Confirms** the detected type or lets you choose.
-3. **Asks** for the project category (Backend API, Frontend App, Full-stack, CLI Tool, Library, Microservice).
-4. **Configures** required settings:
-   - Architecture style (Clean Architecture, Layered, Modular Monolith, Microservices, Minimal)
-   - Testing strategy (Unit + Integration, Unit only, Full pyramid)
-   - Logging strategy (Structured, Basic, Observability)
-5. **Selects** optional capabilities from the registry (Authentication, Database, Redis, REST, GraphQL, Docker, Kafka).
-6. **Generates** the project:
-   - Fetches skills from the GitHub registry.
-   - Writes `.ai/` (source of truth).
-   - Compiles `.github/` (Copilot context).
-   - Creates `README.md`.
+1. Detects project type.
+2. Creates `.ai/` first.
+3. Reads `src/` folder structure (no hard-coded wizard structure).
+4. Prompts by category and lets users select items via checkbox controls.
+5. Copies `src/Required` and selected category items into `.ai/`.
+6. Compiles `.github/{instructions,skills,agents}` from `.ai/`.
+7. Updates `.gitignore` to ignore copied generated `.github` AI files.
+8. Creates project `README.md`.
+
+## What `update` does
+
+1. Reads existing `.ai/project.ai.json`.
+2. Opens the same category wizard with already-installed items pre-marked.
+3. Re-copies all marked items, including items already copied before.
+4. Rebuilds `.github/` from `.ai/`.
 
 ## Generated Structure
 
 ```
 <project>/
-├── .ai/                          ← source of truth (edit here)
+├── .ai/                          ← source of truth used by the generator
 │   ├── project.ai.json
 │   ├── instructions/
-│   │   └── getting-started.md
 │   ├── skills/
-│   │   ├── default.md
-│   │   └── <capability>.md       ← one per selected capability
 │   └── agents/
-│       └── default.json
-├── .github/                      ← generated (do not edit)
-│   ├── copilot-instructions.md
+├── .github/                      ← generated Copilot context
 │   ├── instructions/
 │   ├── skills/
 │   └── agents/
+├── .gitignore                    ← includes .github AI generated paths
 └── README.md
 ```
+
+## Adding a custom AI item
+
+1. Create a category (or reuse one): `src/<category>/`
+2. Create a selectable item folder: `src/<category>/<item>/`
+3. Add files under any of:
+   - `src/<category>/<item>/instructions/`
+   - `src/<category>/<item>/skills/`
+   - `src/<category>/<item>/agents/`
+4. Run `npx github:Caracal-IT/ai update` in your target project and select the item.
+
+The wizard section and labels are derived from folder names automatically.

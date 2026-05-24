@@ -1,110 +1,51 @@
 const { createRL, confirm, selectOne, selectMany } = require('../lib/prompts');
 const { PROJECT_TYPES, PROJECT_TYPE_KEYS } = require('../lib/project-type');
-const { CAPABILITIES } = require('../lib/templates');
-
-const CATEGORIES = [
-  ['backend',     'Backend API'],
-  ['frontend',    'Frontend App'],
-  ['fullstack',   'Full-stack App'],
-  ['cli',         'CLI Tool'],
-  ['library',     'Library'],
-  ['microservice','Microservice'],
-];
-
-const ARCHITECTURES = [
-  ['clean',      'Clean Architecture'],
-  ['layered',    'Layered'],
-  ['modular',    'Modular Monolith'],
-  ['microservices', 'Microservices'],
-  ['minimal',    'Minimal'],
-];
-
-const TESTING_STRATEGIES = [
-  ['unit-integration', 'Unit + Integration'],
-  ['unit',             'Unit only'],
-  ['full-pyramid',     'Full pyramid'],
-];
-
-const LOGGING_STRATEGIES = [
-  ['structured',    'Structured logging'],
-  ['basic',         'Basic logs'],
-  ['observability', 'Observability (OpenTelemetry)'],
-];
 
 /**
- * Run the full 5-step init wizard.
+ * Run folder-driven init/update wizard.
  *
- * @param {string} detectedType  – auto-detected project type key
- * @returns {Promise<{
- *   projectType: string,
- *   category: string,
- *   architecture: string,
- *   testing: string,
- *   logging: string,
- *   capabilities: string[],
- * }>}
+ * @param {string} detectedType
+ * @param {{ categories: Array<{ key: string, label: string, items: Array<{ key: string, label: string }> }> }} catalog
+ * @param {{ selections?: Record<string, string[]> }} [defaults]
  */
-async function runWizard(detectedType) {
+async function runWizard(detectedType, catalog, defaults = {}) {
   const rl = createRL();
 
   try {
-    /* ── Step 1 + 2: Confirm or choose project type ─────────────────────── */
     let projectType = detectedType;
 
     if (process.stdin.isTTY) {
       if (detectedType !== 'empty') {
         const detected = PROJECT_TYPES[detectedType];
         console.log(`\nDetected: ${detected.label}\n`);
-        const ok = await confirm(rl, 'Is this correct?', true);
+        const ok = await confirm(rl, 'Is this project type correct?', true);
         if (!ok) projectType = null;
       }
 
       if (!projectType) {
         const typeItems = PROJECT_TYPE_KEYS.map((k) => [k, PROJECT_TYPES[k].label]);
-        projectType = await selectOne(rl, 'What type of project is this?', typeItems, 'empty');
+        projectType = await selectOne(rl, 'Select project type', typeItems, 'empty');
       }
     }
 
-    /* ── Step 3: Project category ───────────────────────────────────────── */
-    const category = await selectOne(
-      rl,
-      'What type of project is this?',
-      CATEGORIES,
-      'backend',
-    );
+    const selections = {};
+    for (const category of (catalog.categories || [])) {
+      const defaultKeys = defaults.selections?.[category.key] || [];
+      const selectedSet = new Set(defaultKeys);
+      const items = category.items.map((item) => {
+        const installed = selectedSet.has(item.key) ? ' (installed)' : '';
+        return [item.key, `${item.label}${installed}`];
+      });
 
-    /* ── Step 4: Required settings ──────────────────────────────────────── */
-    const architecture = await selectOne(
-      rl,
-      'Architecture:',
-      ARCHITECTURES,
-      'clean',
-    );
+      selections[category.key] = await selectMany(
+        rl,
+        `Select ${category.label} items`,
+        items,
+        defaultKeys,
+      );
+    }
 
-    const testing = await selectOne(
-      rl,
-      'Testing:',
-      TESTING_STRATEGIES,
-      'unit-integration',
-    );
-
-    const logging = await selectOne(
-      rl,
-      'Logging:',
-      LOGGING_STRATEGIES,
-      'structured',
-    );
-
-    /* ── Step 5: Optional capabilities ─────────────────────────────────── */
-    const capItems = CAPABILITIES.map(({ key, label }) => [key, label]);
-    const capabilities = await selectMany(
-      rl,
-      'Select capabilities (optional skills from registry):',
-      capItems,
-      [],
-    );
-
-    return { projectType, category, architecture, testing, logging, capabilities };
+    return { projectType, selections };
   } finally {
     rl.close();
   }
