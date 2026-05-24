@@ -1,3 +1,8 @@
+---
+name: "Redis Cache"
+description: "Use Redis for caching, session storage, or rate-limiting."
+---
+
 # Skill: Redis Cache
 
 ## Description

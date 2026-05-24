@@ -106,9 +106,9 @@ test('generate rebuilds .github/ from .ai/', () => {
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
 });
 
-test('wizard catalog excludes capabilities section', () => {
+test('wizard catalog includes capabilities section', () => {
   const catalog = getSourceCatalog();
-  assert.equal(catalog.categories.some((category) => category.key === 'capabilities'), false);
+  assert.equal(catalog.categories.some((category) => category.key === 'capabilities'), true);
 });
 
 test('update pre-marks installed items, recopies them, and removes deselected files', () => {

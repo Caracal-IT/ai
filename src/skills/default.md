@@ -1,3 +1,8 @@
+---
+name: "Default"
+description: "Starter skill definition for reusable AI tasks in this CLI project."
+---
+
 # Skill: Default
 
 ## Stack

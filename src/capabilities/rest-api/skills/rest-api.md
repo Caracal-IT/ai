@@ -1,3 +1,9 @@
+---
+name: "REST API Standards"
+description: "Design and implement RESTful HTTP APIs that are consistent, discoverable, and versioned."
+applyTo: "**"
+---
+
 # Skill: REST API Standards
 
 ## Description

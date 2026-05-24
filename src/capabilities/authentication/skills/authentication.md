@@ -1,3 +1,9 @@
+---
+name: "Authentication"
+description: "Implement secure, standards-based authentication."
+applyTo: "**"
+---
+
 # Skill: Authentication
 
 ## Description

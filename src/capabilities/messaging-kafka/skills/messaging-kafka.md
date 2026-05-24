@@ -1,3 +1,9 @@
+---
+name: "Messaging (Kafka)"
+description: "Integrate with Apache Kafka for event-driven communication."
+applyTo: "**"
+---
+
 # Skill: Messaging (Kafka)
 
 ## Description
