@@ -1,6 +1,7 @@
 ---
-name: "GraphQL"
+name: "graphql"
 description: "Expose a GraphQL API following schema-first design principles."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 

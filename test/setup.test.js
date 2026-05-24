@@ -5,6 +5,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { execFileSync } = require('node:child_process');
 const { getSourceCatalog } = require('../cli/catalog');
+const { parseFrontMatter } = require('../test-helpers/front-matter');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
@@ -39,6 +40,24 @@ test('init creates .ai/ and .github/ structure', () => {
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'instructions', 'getting-started.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(projectDir, '.github', 'agents', 'default.json')), true);
+  const generatedInstruction = fs.readFileSync(
+    path.join(projectDir, '.github', 'instructions', 'getting-started.md'),
+    'utf8',
+  );
+  const generatedSkill = fs.readFileSync(
+    path.join(projectDir, '.github', 'skills', 'default', 'SKILL.md'),
+    'utf8',
+  );
+  const instructionFrontMatter = parseFrontMatter(generatedInstruction);
+  const skillFrontMatter = parseFrontMatter(generatedSkill);
+  assert.ok(instructionFrontMatter);
+  assert.ok(skillFrontMatter);
+  assert.ok(instructionFrontMatter.name);
+  assert.ok(instructionFrontMatter.description);
+  assert.ok(instructionFrontMatter.whenToUse);
+  assert.ok(skillFrontMatter.name);
+  assert.ok(skillFrontMatter.description);
+  assert.ok(skillFrontMatter.whenToUse);
   assert.equal(fs.existsSync(path.join(projectDir, '.gitignore')), true);
   const gitignore = fs.readFileSync(path.join(projectDir, '.gitignore'), 'utf8');
   assert.match(gitignore, /^\.github\/instructions\/$/m);

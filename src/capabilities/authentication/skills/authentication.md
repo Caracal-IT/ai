@@ -1,6 +1,7 @@
 ---
-name: "Authentication"
+name: "authentication"
 description: "Implement secure, standards-based authentication."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 

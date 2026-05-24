@@ -1,6 +1,7 @@
 ---
-name: "Redis Cache"
+name: "redis-cache"
 description: "Use Redis for caching, session storage, or rate-limiting."
+whenToUse: "Use when the task requires this skill capability."
 applyTo: "**"
 ---
 
