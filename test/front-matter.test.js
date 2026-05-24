@@ -18,10 +18,11 @@ function collectMarkdownFiles(dir) {
 }
 
 function parseFrontMatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!match) return null;
   const result = {};
-  for (const line of match[1].split('\n')) {
+  for (const rawLine of match[1].split(/\r?\n/)) {
+    const line = rawLine.replace(/\r$/, '');
     const separator = line.indexOf(':');
     if (separator === -1) continue;
     const key = line.slice(0, separator).trim();
