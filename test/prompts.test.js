@@ -2,8 +2,6 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const Module = require('node:module');
 
-const prompts = require('../lib/prompts');
-
 function withTTY(value, callback) {
   const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
   Object.defineProperty(process.stdin, 'isTTY', { value, configurable: true });
@@ -37,6 +35,8 @@ async function withCapturedStdout(callback) {
 }
 
 test('prompts are not loaded in non-TTY mode', async () => {
+  const promptsPath = require.resolve('../lib/prompts');
+  delete require.cache[promptsPath];
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request, parent, isMain) {
     if (request === '@inquirer/prompts') {
@@ -46,6 +46,7 @@ test('prompts are not loaded in non-TTY mode', async () => {
   };
 
   try {
+    const prompts = require('../lib/prompts');
     await withTTY(false, async () => {
       const result = await prompts.confirm(null, 'Question?', false);
       assert.equal(result, false);
@@ -56,6 +57,7 @@ test('prompts are not loaded in non-TTY mode', async () => {
 });
 
 test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', async () => {
+  const prompts = require('../lib/prompts');
   await withTTY(true, async () => {
     await withCapturedStdout(async () => {
       const defaultResult = await prompts.confirm(createFakeInterface(['']), 'Question?', true);
@@ -74,6 +76,7 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
 });
 
 test('selectOne retries until a valid numeric selection is provided', async () => {
+  const prompts = require('../lib/prompts');
   await withTTY(true, async () => {
     await withCapturedStdout(async () => {
       const rl = createFakeInterface(['9', '2']);
@@ -90,6 +93,7 @@ test('selectOne retries until a valid numeric selection is provided', async () =
 });
 
 test('selectMany returns defaults on blank input and parses comma-separated selections', async () => {
+  const prompts = require('../lib/prompts');
   await withTTY(true, async () => {
     await withCapturedStdout(async () => {
       const defaultsResult = await prompts.selectMany(
