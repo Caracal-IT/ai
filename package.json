@@ -37,7 +37,7 @@
     "url": "https://github.com/Caracal-IT/ai/issues"
   },
   "homepage": "https://github.com/Caracal-IT/ai#readme",
-  "dependencies": {
+  "optionalDependencies": {
     "@inquirer/prompts": "^8.5.0"
   }
 }
