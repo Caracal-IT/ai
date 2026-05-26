@@ -47,6 +47,24 @@ function withMockedInquirerPrompts(stubs, callback) {
     });
 }
 
+function withUnavailableInquirerPrompts(callback) {
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@inquirer/prompts') {
+      const err = new Error("Cannot find module '@inquirer/prompts'");
+      err.code = 'MODULE_NOT_FOUND';
+      throw err;
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      Module._load = originalLoad;
+    });
+}
+
 test('prompts are not loaded in non-TTY mode', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   delete require.cache[promptsPath];
@@ -118,13 +136,13 @@ test('selectOne uses @inquirer/prompts and clears menu when available', { concur
   assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
-test('selectOne retries until a valid numeric selection is provided when prompts package is missing select', { concurrency: false }, async (t) => {
+test('selectOne retries until a valid numeric selection is provided when prompts package is unavailable', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   delete require.cache[promptsPath];
   const prompts = require('../lib/prompts');
   await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
-      await withMockedInquirerPrompts({}, async () => {
+      await withUnavailableInquirerPrompts(async () => {
         const rl = createFakeInterface(['9', '2']);
         const result = await prompts.selectOne(
           rl,
@@ -179,7 +197,7 @@ test('selectMany returns defaults on blank input and parses comma-separated sele
   const prompts = require('../lib/prompts');
   await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
-      await withMockedInquirerPrompts({}, async () => {
+      await withUnavailableInquirerPrompts(async () => {
         const defaultsResult = await prompts.selectMany(
           createFakeInterface(['']),
           'Select capabilities',
