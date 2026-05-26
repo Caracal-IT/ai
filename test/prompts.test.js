@@ -106,15 +106,15 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
   });
 });
 
-test('selectOne uses @inquirer/prompts checkbox radio style and clears menu when available', { concurrency: false }, async (t) => {
+test('selectOne uses @inquirer/prompts select and clears menu when available', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   const calls = [];
   delete require.cache[promptsPath];
 
   await withMockedInquirerPrompts({
-    checkbox(config, context) {
+    select(config, context) {
       calls.push({ config, context });
-      return Promise.resolve(['nodejs']);
+      return Promise.resolve('nodejs');
     },
   }, async () => {
     const prompts = require('../lib/prompts');
@@ -129,19 +129,18 @@ test('selectOne uses @inquirer/prompts checkbox radio style and clears menu when
       assert.equal(result, 'nodejs');
     });
   });
-
   assert.equal(calls.length, 1);
   assert.equal(calls[0].config.message, 'Select project type');
-  assert.equal(calls[0].config.instructions, true);
-  assert.equal(calls[0].config.required, true);
-  assert.equal(calls[0].config.validate(['empty', 'nodejs']), 'Please select exactly one item.');
-  assert.equal(calls[0].config.validate(['empty']), true);
+  assert.equal(calls[0].config.message, 'Select project type');
+  assert.deepEqual(calls[0].config.instructions, {
+    navigation: 'Use ↑↓ to move, Enter to confirm.',
+    pager: 'Use ↑↓ to move, Enter to confirm.',
+  });
+  assert.equal(calls[0].config.default, 'empty');
   assert.deepEqual(
-    calls[0].config.choices.map((choice) => [choice.value, choice.checked]),
-    [['empty', true], ['nodejs', false]],
+    calls[0].config.choices.map((choice) => [choice.value, choice.name]),
+    [['empty', 'Empty'], ['nodejs', 'Node.js']],
   );
-  assert.equal(calls[0].config.theme.icon.checked, '(●)');
-  assert.equal(calls[0].config.theme.icon.unchecked, '( )');
   assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
@@ -192,12 +191,18 @@ test('selectMany uses @inquirer/prompts checkbox with pre-selected defaults', { 
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].config.message, 'Select capabilities');
-  assert.equal(calls[0].config.instructions, true);
+  assert.equal(calls[0].config.instructions, 'Use ↑↓ to move, space to select, Enter to confirm.');
   assert.deepEqual(
     calls[0].config.choices.map((choice) => [choice.value, choice.checked]),
     [['auth', false], ['docs', true]],
   );
   assert.equal(calls[0].context.clearPromptOnDone, true);
+});
+
+test('package.json installs @inquirer/prompts as a runtime dependency', () => {
+  const pkg = require('../package.json');
+  assert.equal(pkg.dependencies['@inquirer/prompts'], '^7.10.1');
+  assert.equal(pkg.optionalDependencies?.['@inquirer/prompts'], undefined);
 });
 
 test('selectMany returns defaults on blank input and parses comma-separated selections when prompts package is unavailable', { concurrency: false }, async (t) => {
