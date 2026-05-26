@@ -118,7 +118,7 @@ test('selectOne uses @inquirer/prompts and clears menu when available', { concur
   assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
-test('selectOne retries until a valid numeric selection is provided when prompts package is unavailable', { concurrency: false }, async (t) => {
+test('selectOne retries until a valid numeric selection is provided when prompts package is missing select', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   delete require.cache[promptsPath];
   const prompts = require('../lib/prompts');
