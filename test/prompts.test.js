@@ -1,53 +1,113 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 const test = require('node:test');
-const { spawnSync } = require('node:child_process');
-
-test('prompts are not loaded in non-TTY mode', () => {
-  const promptsPath = path.resolve(__dirname, '..', 'lib', 'prompts.js');
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompts-loader-'));
-  const loaderPath = path.join(tempDir, 'loader.mjs');
-  fs.writeFileSync(
-    loaderPath,
-    `
-export async function resolve(specifier, context, nextResolve) {
-  if (specifier === '@inquirer/prompts') {
-    throw new Error('prompts package should not resolve in non-TTY mode');
-  }
-  return nextResolve(specifier, context);
-}
-`,
-  );
-  const script = `
 const Module = require('node:module');
-const originalLoad = Module._load;
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === '@inquirer/prompts') {
-    throw new Error('prompts package should not load in non-TTY mode');
-  }
-  return originalLoad.call(this, request, parent, isMain);
-};
-Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true });
-(async () => {
-  const prompts = require(${JSON.stringify(promptsPath)});
-  const result = await prompts.confirm(null, 'Question?', false);
-  if (result !== false) {
-    throw new Error('Expected default value in non-TTY mode');
-  }
-})().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
-`;
-  try {
-    const result = spawnSync(process.execPath, ['--loader', loaderPath, '-e', script], {
-      encoding: 'utf8',
-    });
 
-    assert.equal(result.status, 0, result.stderr);
+function withTTY(t, value, callback) {
+  const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
+  Object.defineProperty(process.stdin, 'isTTY', { value, configurable: true });
+  t.after(() => {
+    if (originalStdinTTY) Object.defineProperty(process.stdin, 'isTTY', originalStdinTTY);
+    else delete process.stdin.isTTY;
+  });
+  return Promise.resolve().then(callback);
+}
+
+function createFakeInterface(answers) {
+  return {
+    question(_prompt, callback) {
+      callback(answers.shift() ?? '');
+    },
+    close() {},
+  };
+}
+
+async function withCapturedStdout(callback) {
+  const mockedWrite = test.mock.method(process.stdout, 'write', () => true);
+
+  try {
+    return await callback();
   } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    mockedWrite.mock.restore();
   }
+}
+
+test('prompts are not loaded in non-TTY mode', { concurrency: false }, async (t) => {
+  const promptsPath = require.resolve('../lib/prompts');
+  delete require.cache[promptsPath];
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@inquirer/prompts') {
+      throw new Error('prompts package should not load');
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  try {
+    const prompts = require('../lib/prompts');
+    await withTTY(t, false, async () => {
+      const result = await prompts.confirm(null, 'Question?', false);
+      assert.equal(result, false);
+    });
+  } finally {
+    Module._load = originalLoad;
+  }
+});
+
+test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    await withCapturedStdout(async () => {
+      const defaultResult = await prompts.confirm(createFakeInterface(['']), 'Question?', true);
+      assert.equal(defaultResult, true);
+
+      const affirmativeResult = await prompts.confirm(createFakeInterface(['y']), 'Question?', false);
+      assert.equal(affirmativeResult, true);
+
+      const negativeResult = await prompts.confirm(createFakeInterface(['no']), 'Question?', true);
+      assert.equal(negativeResult, false);
+
+      const retryResult = await prompts.confirm(createFakeInterface(['maybe', 'yes']), 'Question?', false);
+      assert.equal(retryResult, true);
+    });
+  });
+});
+
+test('selectOne retries until a valid numeric selection is provided', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    await withCapturedStdout(async () => {
+      const rl = createFakeInterface(['9', '2']);
+      const result = await prompts.selectOne(
+        rl,
+        'Select project type',
+        [['empty', 'Empty'], ['nodejs', 'Node.js']],
+        'empty',
+      );
+
+      assert.equal(result, 'nodejs');
+    });
+  });
+});
+
+test('selectMany returns defaults on blank input and parses comma-separated selections', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    await withCapturedStdout(async () => {
+      const defaultsResult = await prompts.selectMany(
+        createFakeInterface(['']),
+        'Select capabilities',
+        [['auth', 'Authentication'], ['docs', 'Documentation']],
+        ['docs', 'stale'],
+      );
+      assert.deepEqual(defaultsResult, ['docs']);
+
+      const customResult = await prompts.selectMany(
+        createFakeInterface(['2, 1, 2']),
+        'Select capabilities',
+        [['auth', 'Authentication'], ['docs', 'Documentation']],
+        [],
+      );
+      assert.deepEqual(customResult, ['docs', 'auth']);
+    });
+  });
 });
