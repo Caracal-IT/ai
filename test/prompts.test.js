@@ -31,6 +31,40 @@ async function withCapturedStdout(callback) {
   }
 }
 
+function withMockedInquirerPrompts(stubs, callback) {
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@inquirer/prompts') {
+      return stubs;
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      Module._load = originalLoad;
+    });
+}
+
+function withUnavailableInquirerPrompts(callback) {
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@inquirer/prompts') {
+      const err = new Error("Cannot find module '@inquirer/prompts'");
+      err.code = 'MODULE_NOT_FOUND';
+      throw err;
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      Module._load = originalLoad;
+    });
+}
+
 test('prompts are not loaded in non-TTY mode', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   delete require.cache[promptsPath];
@@ -72,13 +106,21 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
   });
 });
 
-test('selectOne retries until a valid numeric selection is provided', { concurrency: false }, async (t) => {
-  const prompts = require('../lib/prompts');
-  await withTTY(t, true, async () => {
-    await withCapturedStdout(async () => {
-      const rl = createFakeInterface(['9', '2']);
+test('selectOne uses @inquirer/prompts and clears menu when available', { concurrency: false }, async (t) => {
+  const promptsPath = require.resolve('../lib/prompts');
+  const calls = [];
+  delete require.cache[promptsPath];
+
+  await withMockedInquirerPrompts({
+    select(config, context) {
+      calls.push({ config, context });
+      return Promise.resolve('nodejs');
+    },
+  }, async () => {
+    const prompts = require('../lib/prompts');
+    await withTTY(t, true, async () => {
       const result = await prompts.selectOne(
-        rl,
+        createFakeInterface(['']),
         'Select project type',
         [['empty', 'Empty'], ['nodejs', 'Node.js']],
         'empty',
@@ -87,27 +129,91 @@ test('selectOne retries until a valid numeric selection is provided', { concurre
       assert.equal(result, 'nodejs');
     });
   });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].config.message, 'Select project type');
+  assert.equal(calls[0].config.default, 'empty');
+  assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
-test('selectMany returns defaults on blank input and parses comma-separated selections', { concurrency: false }, async (t) => {
+test('selectOne retries until a valid numeric selection is provided when prompts package is unavailable', { concurrency: false }, async (t) => {
+  const promptsPath = require.resolve('../lib/prompts');
+  delete require.cache[promptsPath];
   const prompts = require('../lib/prompts');
   await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
-      const defaultsResult = await prompts.selectMany(
+      await withUnavailableInquirerPrompts(async () => {
+        const rl = createFakeInterface(['9', '2']);
+        const result = await prompts.selectOne(
+          rl,
+          'Select project type',
+          [['empty', 'Empty'], ['nodejs', 'Node.js']],
+          'empty',
+        );
+
+        assert.equal(result, 'nodejs');
+      });
+    });
+  });
+});
+
+test('selectMany uses @inquirer/prompts checkbox with pre-selected defaults', { concurrency: false }, async (t) => {
+  const promptsPath = require.resolve('../lib/prompts');
+  const calls = [];
+  delete require.cache[promptsPath];
+
+  await withMockedInquirerPrompts({
+    checkbox(config, context) {
+      calls.push({ config, context });
+      return Promise.resolve(['docs']);
+    },
+  }, async () => {
+    const prompts = require('../lib/prompts');
+    await withTTY(t, true, async () => {
+      const result = await prompts.selectMany(
         createFakeInterface(['']),
         'Select capabilities',
         [['auth', 'Authentication'], ['docs', 'Documentation']],
         ['docs', 'stale'],
       );
-      assert.deepEqual(defaultsResult, ['docs']);
 
-      const customResult = await prompts.selectMany(
-        createFakeInterface(['2, 1, 2']),
-        'Select capabilities',
-        [['auth', 'Authentication'], ['docs', 'Documentation']],
-        [],
-      );
-      assert.deepEqual(customResult, ['docs', 'auth']);
+      assert.deepEqual(result, ['docs']);
+    });
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].config.message, 'Select capabilities');
+  assert.equal(calls[0].config.instructions, true);
+  assert.deepEqual(
+    calls[0].config.choices.map((choice) => [choice.value, choice.checked]),
+    [['auth', false], ['docs', true]],
+  );
+  assert.equal(calls[0].context.clearPromptOnDone, true);
+});
+
+test('selectMany returns defaults on blank input and parses comma-separated selections when prompts package is unavailable', { concurrency: false }, async (t) => {
+  const promptsPath = require.resolve('../lib/prompts');
+  delete require.cache[promptsPath];
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    await withCapturedStdout(async () => {
+      await withUnavailableInquirerPrompts(async () => {
+        const defaultsResult = await prompts.selectMany(
+          createFakeInterface(['']),
+          'Select capabilities',
+          [['auth', 'Authentication'], ['docs', 'Documentation']],
+          ['docs', 'stale'],
+        );
+        assert.deepEqual(defaultsResult, ['docs']);
+
+        const customResult = await prompts.selectMany(
+          createFakeInterface(['2, 1, 2']),
+          'Select capabilities',
+          [['auth', 'Authentication'], ['docs', 'Documentation']],
+          [],
+        );
+        assert.deepEqual(customResult, ['docs', 'auth']);
+      });
     });
   });
 });

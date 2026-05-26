@@ -36,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/Caracal-IT/ai/issues"
   },
-  "homepage": "https://github.com/Caracal-IT/ai#readme"
+  "homepage": "https://github.com/Caracal-IT/ai#readme",
+  "optionalDependencies": {
+    "@inquirer/prompts": "^8.5.0"
+  }
 }
