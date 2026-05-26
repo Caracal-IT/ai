@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 function withTTY(t, value, callback) {
@@ -184,10 +186,11 @@ test('selectMany uses dependency-free interactive navigation with space and Ente
   });
 });
 
-test('package.json does not declare npm dependencies', () => {
+test('repository does not keep npm dependency metadata', () => {
   const pkg = require('../package.json');
   assert.equal(pkg.dependencies, undefined);
   assert.equal(pkg.optionalDependencies, undefined);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'package-lock.json')), false);
 });
 
 test('selectMany returns defaults on blank input and parses comma-separated selections when raw interactive input is unavailable', { concurrency: false }, async (t) => {
