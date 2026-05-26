@@ -88,7 +88,7 @@ test('selectMany returns defaults on blank input and parses comma-separated sele
         createFakeInterface(['']),
         'Select capabilities',
         [['auth', 'Authentication'], ['docs', 'Documentation']],
-        ['docs'],
+        ['docs', 'stale'],
       );
       assert.deepEqual(defaultsResult, ['docs']);
 
