@@ -1,53 +1,104 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 const test = require('node:test');
-const { spawnSync } = require('node:child_process');
-
-test('prompts are not loaded in non-TTY mode', () => {
-  const promptsPath = path.resolve(__dirname, '..', 'lib', 'prompts.js');
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompts-loader-'));
-  const loaderPath = path.join(tempDir, 'loader.mjs');
-  fs.writeFileSync(
-    loaderPath,
-    `
-export async function resolve(specifier, context, nextResolve) {
-  if (specifier === '@inquirer/prompts') {
-    throw new Error('prompts package should not resolve in non-TTY mode');
-  }
-  return nextResolve(specifier, context);
-}
-`,
-  );
-  const script = `
 const Module = require('node:module');
-const originalLoad = Module._load;
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === '@inquirer/prompts') {
-    throw new Error('prompts package should not load in non-TTY mode');
-  }
-  return originalLoad.call(this, request, parent, isMain);
-};
-Object.defineProperty(process.stdin, 'isTTY', { value: false, configurable: true });
-(async () => {
-  const prompts = require(${JSON.stringify(promptsPath)});
-  const result = await prompts.confirm(null, 'Question?', false);
-  if (result !== false) {
-    throw new Error('Expected default value in non-TTY mode');
-  }
-})().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
-`;
-  try {
-    const result = spawnSync(process.execPath, ['--loader', loaderPath, '-e', script], {
-      encoding: 'utf8',
-    });
 
-    assert.equal(result.status, 0, result.stderr);
+const prompts = require('../lib/prompts');
+
+function withTTY(value, callback) {
+  const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
+  Object.defineProperty(process.stdin, 'isTTY', { value, configurable: true });
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      if (originalStdinTTY) Object.defineProperty(process.stdin, 'isTTY', originalStdinTTY);
+      else delete process.stdin.isTTY;
+    });
+}
+
+function createFakeInterface(answers) {
+  return {
+    question(_prompt, callback) {
+      callback(answers.shift() ?? '');
+    },
+    close() {},
+  };
+}
+
+async function withCapturedStdout(callback) {
+  const originalWrite = process.stdout.write;
+  process.stdout.write = () => true;
+
+  try {
+    return await callback();
   } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    process.stdout.write = originalWrite;
   }
+}
+
+test('prompts are not loaded in non-TTY mode', async () => {
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@inquirer/prompts') {
+      throw new Error('prompts package should not load');
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  try {
+    await withTTY(false, async () => {
+      const result = await prompts.confirm(null, 'Question?', false);
+      assert.equal(result, false);
+    });
+  } finally {
+    Module._load = originalLoad;
+  }
+});
+
+test('confirm accepts blank input as the default answer', async () => {
+  await withTTY(true, async () => {
+    await withCapturedStdout(async () => {
+      const rl = createFakeInterface(['']);
+      const result = await prompts.confirm(rl, 'Question?', true);
+      assert.equal(result, true);
+    });
+  });
+});
+
+test('selectOne retries until a valid numeric selection is provided', async () => {
+  await withTTY(true, async () => {
+    await withCapturedStdout(async () => {
+      const rl = createFakeInterface(['9', '2']);
+      const result = await prompts.selectOne(
+        rl,
+        'Select project type',
+        [['empty', 'Empty'], ['nodejs', 'Node.js']],
+        'empty',
+      );
+
+      assert.equal(result, 'nodejs');
+    });
+  });
+});
+
+test('selectMany returns defaults on blank input and parses comma-separated selections', async () => {
+  await withTTY(true, async () => {
+    await withCapturedStdout(async () => {
+      const defaultsResult = await prompts.selectMany(
+        createFakeInterface(['']),
+        'Select capabilities',
+        [['auth', 'Authentication'], ['docs', 'Documentation']],
+        ['docs'],
+      );
+      assert.deepEqual(defaultsResult, ['docs']);
+
+      const customResult = await prompts.selectMany(
+        createFakeInterface(['2, 1, 2']),
+        'Select capabilities',
+        [['auth', 'Authentication'], ['docs', 'Documentation']],
+        [],
+      );
+      assert.deepEqual(customResult, ['docs', 'auth']);
+    });
+  });
 });
