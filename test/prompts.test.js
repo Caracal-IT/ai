@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { execSync } = require('node:child_process');
 const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -190,7 +191,8 @@ test('repository does not keep npm dependency metadata', () => {
   const pkg = require('../package.json');
   assert.equal(pkg.dependencies, undefined);
   assert.equal(pkg.optionalDependencies, undefined);
-  assert.equal(fs.existsSync(path.join(__dirname, '..', 'package-lock.json')), false);
+  const trackedFiles = execSync('git ls-files', { cwd: path.join(__dirname, '..') }).toString().split('\n');
+  assert.ok(!trackedFiles.includes('package-lock.json'), 'package-lock.json must not be tracked by git');
 });
 
 test('selectMany returns defaults on blank input and parses comma-separated selections when raw interactive input is unavailable', { concurrency: false }, async (t) => {
