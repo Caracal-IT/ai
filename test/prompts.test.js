@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
 const test = require('node:test');
-const Module = require('node:module');
 
 function withTTY(t, value, callback) {
   const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
@@ -12,8 +12,12 @@ function withTTY(t, value, callback) {
   return Promise.resolve().then(callback);
 }
 
-function createFakeInterface(answers) {
+function createFakeInterface(answers, overrides = {}) {
   return {
+    input: overrides.input,
+    output: overrides.output,
+    pause() {},
+    resume() {},
     question(_prompt, callback) {
       callback(answers.shift() ?? '');
     },
@@ -31,60 +35,60 @@ async function withCapturedStdout(callback) {
   }
 }
 
-function withMockedInquirerPrompts(stubs, callback) {
-  const originalLoad = Module._load;
-  Module._load = function patchedLoad(request, parent, isMain) {
-    if (request === '@inquirer/prompts') {
-      return stubs;
-    }
-    return originalLoad.call(this, request, parent, isMain);
+function createInteractiveInterface() {
+  const input = new EventEmitter();
+  input.isTTY = true;
+  input.isRaw = false;
+  input.rawModes = [];
+  input.setRawMode = (value) => {
+    input.isRaw = value;
+    input.rawModes.push(value);
+  };
+  input.resume = () => {
+    input.resumed = true;
+  };
+  input.pause = () => {
+    input.paused = true;
   };
 
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      Module._load = originalLoad;
-    });
+  const writes = [];
+  const output = {
+    isTTY: true,
+    write(chunk) {
+      writes.push(String(chunk));
+      return true;
+    },
+  };
+
+  const rl = createFakeInterface([], { input, output });
+  rl.pause = () => {
+    rl.pauseCalled = true;
+  };
+  rl.resume = () => {
+    rl.resumeCalled = true;
+  };
+
+  return { rl, input, output, writes };
 }
 
-function withUnavailableInquirerPrompts(callback) {
-  const originalLoad = Module._load;
-  Module._load = function patchedLoad(request, parent, isMain) {
-    if (request === '@inquirer/prompts') {
-      const err = new Error("Cannot find module '@inquirer/prompts'");
-      err.code = 'MODULE_NOT_FOUND';
-      throw err;
+function pressKeys(input, keys) {
+  setImmediate(() => {
+    for (const key of keys) {
+      input.emit('keypress', key.sequence ?? '', key);
     }
-    return originalLoad.call(this, request, parent, isMain);
-  };
-
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      Module._load = originalLoad;
-    });
+  });
 }
 
-test('prompts are not loaded in non-TTY mode', { concurrency: false }, async (t) => {
-  const promptsPath = require.resolve('../lib/prompts');
-  delete require.cache[promptsPath];
-  const originalLoad = Module._load;
-  Module._load = function patchedLoad(request, parent, isMain) {
-    if (request === '@inquirer/prompts') {
-      throw new Error('prompts package should not load');
-    }
-    return originalLoad.call(this, request, parent, isMain);
-  };
-
-  try {
-    const prompts = require('../lib/prompts');
-    await withTTY(t, false, async () => {
-      const result = await prompts.confirm(null, 'Question?', false);
-      assert.equal(result, false);
-    });
-  } finally {
-    Module._load = originalLoad;
-  }
+test('prompts return defaults in non-TTY mode', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, false, async () => {
+    const confirmResult = await prompts.confirm(null, 'Question?', false);
+    assert.equal(confirmResult, false);
+    const singleResult = await prompts.selectOne(null, 'Select project type', [['empty', 'Empty']], 'empty');
+    assert.equal(singleResult, 'empty');
+    const manyResult = await prompts.selectMany(null, 'Select capabilities', [['docs', 'Documentation']], ['docs']);
+    assert.deepEqual(manyResult, ['docs']);
+  });
 });
 
 test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', { concurrency: false }, async (t) => {
@@ -106,21 +110,41 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
   });
 });
 
-test('selectOne uses @inquirer/prompts select and clears menu when available', { concurrency: false }, async (t) => {
-  const promptsPath = require.resolve('../lib/prompts');
-  const calls = [];
-  delete require.cache[promptsPath];
+test('selectOne uses dependency-free interactive navigation and clears the menu on submit', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    const { rl, input, writes } = createInteractiveInterface();
+    pressKeys(input, [
+      { name: 'down' },
+      { name: 'return', sequence: '\r' },
+    ]);
 
-  await withMockedInquirerPrompts({
-    select(config, context) {
-      calls.push({ config, context });
-      return Promise.resolve('nodejs');
-    },
-  }, async () => {
-    const prompts = require('../lib/prompts');
-    await withTTY(t, true, async () => {
+    const result = await prompts.selectOne(
+      rl,
+      'Select project type',
+      [['empty', 'Empty'], ['nodejs', 'Node.js']],
+      'empty',
+    );
+
+    assert.equal(result, 'nodejs');
+    assert.deepEqual(input.rawModes, [true, false]);
+    assert.equal(rl.pauseCalled, true);
+    assert.equal(rl.resumeCalled, true);
+
+    const outputText = writes.join('');
+    assert.match(outputText, /Use ↑↓ to move, Enter to confirm\./);
+    assert.match(outputText, /Select project type: Node\.js/);
+    assert.match(outputText, /\u001b\[[0-9;]*J/);
+  });
+});
+
+test('selectOne retries until a valid numeric selection is provided when raw interactive input is unavailable', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    await withCapturedStdout(async () => {
+      const rl = createFakeInterface(['9', '2']);
       const result = await prompts.selectOne(
-        createFakeInterface(['']),
+        rl,
         'Select project type',
         [['empty', 'Empty'], ['nodejs', 'Node.js']],
         'empty',
@@ -129,105 +153,62 @@ test('selectOne uses @inquirer/prompts select and clears menu when available', {
       assert.equal(result, 'nodejs');
     });
   });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].config.message, 'Select project type');
-  assert.equal(calls[0].config.message, 'Select project type');
-  assert.deepEqual(calls[0].config.instructions, {
-    navigation: 'Use ↑↓ to move, Enter to confirm.',
-    pager: 'Use ↑↓ to move, Enter to confirm.',
-  });
-  assert.equal(calls[0].config.default, 'empty');
-  assert.deepEqual(
-    calls[0].config.choices.map((choice) => [choice.value, choice.name]),
-    [['empty', 'Empty'], ['nodejs', 'Node.js']],
-  );
-  assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
-test('selectOne retries until a valid numeric selection is provided when prompts package is unavailable', { concurrency: false }, async (t) => {
-  const promptsPath = require.resolve('../lib/prompts');
-  delete require.cache[promptsPath];
+test('selectMany uses dependency-free interactive navigation with space and Enter guidance', { concurrency: false }, async (t) => {
+  const prompts = require('../lib/prompts');
+  await withTTY(t, true, async () => {
+    const { rl, input, writes } = createInteractiveInterface();
+    pressKeys(input, [
+      { name: 'up' },
+      { name: 'space', sequence: ' ' },
+      { name: 'return', sequence: '\r' },
+    ]);
+
+    const result = await prompts.selectMany(
+      rl,
+      'Select capabilities',
+      [['auth', 'Authentication'], ['docs', 'Documentation']],
+      ['docs', 'stale'],
+    );
+
+    assert.deepEqual(result, ['auth', 'docs']);
+    assert.deepEqual(input.rawModes, [true, false]);
+    assert.equal(rl.pauseCalled, true);
+    assert.equal(rl.resumeCalled, true);
+
+    const outputText = writes.join('');
+    assert.match(outputText, /Use ↑↓ to move, space to select, Enter to confirm\./);
+    assert.match(outputText, /Select capabilities: Authentication, Documentation/);
+    assert.match(outputText, /\u001b\[[0-9;]*J/);
+  });
+});
+
+test('package.json does not declare npm dependencies', () => {
+  const pkg = require('../package.json');
+  assert.equal(pkg.dependencies, undefined);
+  assert.equal(pkg.optionalDependencies, undefined);
+});
+
+test('selectMany returns defaults on blank input and parses comma-separated selections when raw interactive input is unavailable', { concurrency: false }, async (t) => {
   const prompts = require('../lib/prompts');
   await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
-      await withUnavailableInquirerPrompts(async () => {
-        const rl = createFakeInterface(['9', '2']);
-        const result = await prompts.selectOne(
-          rl,
-          'Select project type',
-          [['empty', 'Empty'], ['nodejs', 'Node.js']],
-          'empty',
-        );
-
-        assert.equal(result, 'nodejs');
-      });
-    });
-  });
-});
-
-test('selectMany uses @inquirer/prompts checkbox with pre-selected defaults', { concurrency: false }, async (t) => {
-  const promptsPath = require.resolve('../lib/prompts');
-  const calls = [];
-  delete require.cache[promptsPath];
-
-  await withMockedInquirerPrompts({
-    checkbox(config, context) {
-      calls.push({ config, context });
-      return Promise.resolve(['docs']);
-    },
-  }, async () => {
-    const prompts = require('../lib/prompts');
-    await withTTY(t, true, async () => {
-      const result = await prompts.selectMany(
+      const defaultsResult = await prompts.selectMany(
         createFakeInterface(['']),
         'Select capabilities',
         [['auth', 'Authentication'], ['docs', 'Documentation']],
         ['docs', 'stale'],
       );
+      assert.deepEqual(defaultsResult, ['docs']);
 
-      assert.deepEqual(result, ['docs']);
-    });
-  });
-
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].config.message, 'Select capabilities');
-  assert.equal(calls[0].config.instructions, 'Use ↑↓ to move, space to select, Enter to confirm.');
-  assert.deepEqual(
-    calls[0].config.choices.map((choice) => [choice.value, choice.checked]),
-    [['auth', false], ['docs', true]],
-  );
-  assert.equal(calls[0].context.clearPromptOnDone, true);
-});
-
-test('package.json installs @inquirer/prompts as a runtime dependency', () => {
-  const pkg = require('../package.json');
-  assert.equal(pkg.dependencies['@inquirer/prompts'], '^7.10.1');
-  assert.equal(pkg.optionalDependencies?.['@inquirer/prompts'], undefined);
-});
-
-test('selectMany returns defaults on blank input and parses comma-separated selections when prompts package is unavailable', { concurrency: false }, async (t) => {
-  const promptsPath = require.resolve('../lib/prompts');
-  delete require.cache[promptsPath];
-  const prompts = require('../lib/prompts');
-  await withTTY(t, true, async () => {
-    await withCapturedStdout(async () => {
-      await withUnavailableInquirerPrompts(async () => {
-        const defaultsResult = await prompts.selectMany(
-          createFakeInterface(['']),
-          'Select capabilities',
-          [['auth', 'Authentication'], ['docs', 'Documentation']],
-          ['docs', 'stale'],
-        );
-        assert.deepEqual(defaultsResult, ['docs']);
-
-        const customResult = await prompts.selectMany(
-          createFakeInterface(['2, 1, 2']),
-          'Select capabilities',
-          [['auth', 'Authentication'], ['docs', 'Documentation']],
-          [],
-        );
-        assert.deepEqual(customResult, ['docs', 'auth']);
-      });
+      const customResult = await prompts.selectMany(
+        createFakeInterface(['2, 1, 2']),
+        'Select capabilities',
+        [['auth', 'Authentication'], ['docs', 'Documentation']],
+        [],
+      );
+      assert.deepEqual(customResult, ['docs', 'auth']);
     });
   });
 });
