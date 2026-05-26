@@ -106,15 +106,15 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
   });
 });
 
-test('selectOne uses @inquirer/prompts and clears menu when available', { concurrency: false }, async (t) => {
+test('selectOne uses @inquirer/prompts checkbox radio style and clears menu when available', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   const calls = [];
   delete require.cache[promptsPath];
 
   await withMockedInquirerPrompts({
-    select(config, context) {
+    checkbox(config, context) {
       calls.push({ config, context });
-      return Promise.resolve('nodejs');
+      return Promise.resolve(['nodejs']);
     },
   }, async () => {
     const prompts = require('../lib/prompts');
@@ -132,7 +132,16 @@ test('selectOne uses @inquirer/prompts and clears menu when available', { concur
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].config.message, 'Select project type');
-  assert.equal(calls[0].config.default, 'empty');
+  assert.equal(calls[0].config.instructions, true);
+  assert.equal(calls[0].config.required, true);
+  assert.equal(calls[0].config.validate(['empty', 'nodejs']), 'Please select exactly one item.');
+  assert.equal(calls[0].config.validate(['empty']), true);
+  assert.deepEqual(
+    calls[0].config.choices.map((choice) => [choice.value, choice.checked]),
+    [['empty', true], ['nodejs', false]],
+  );
+  assert.equal(calls[0].config.theme.icon.checked, '(●)');
+  assert.equal(calls[0].config.theme.icon.unchecked, '( )');
   assert.equal(calls[0].context.clearPromptOnDone, true);
 });
 
