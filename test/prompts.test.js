@@ -2,16 +2,14 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const Module = require('node:module');
 
-function withTTY(value, callback) {
+function withTTY(t, value, callback) {
   const originalStdinTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
   Object.defineProperty(process.stdin, 'isTTY', { value, configurable: true });
-
-  return Promise.resolve()
-    .then(callback)
-    .finally(() => {
-      if (originalStdinTTY) Object.defineProperty(process.stdin, 'isTTY', originalStdinTTY);
-      else delete process.stdin.isTTY;
-    });
+  t.after(() => {
+    if (originalStdinTTY) Object.defineProperty(process.stdin, 'isTTY', originalStdinTTY);
+    else delete process.stdin.isTTY;
+  });
+  return Promise.resolve().then(callback);
 }
 
 function createFakeInterface(answers) {
@@ -33,7 +31,7 @@ async function withCapturedStdout(callback) {
   }
 }
 
-test('prompts are not loaded in non-TTY mode', async () => {
+test('prompts are not loaded in non-TTY mode', { concurrency: false }, async (t) => {
   const promptsPath = require.resolve('../lib/prompts');
   delete require.cache[promptsPath];
   const originalLoad = Module._load;
@@ -46,7 +44,7 @@ test('prompts are not loaded in non-TTY mode', async () => {
 
   try {
     const prompts = require('../lib/prompts');
-    await withTTY(false, async () => {
+    await withTTY(t, false, async () => {
       const result = await prompts.confirm(null, 'Question?', false);
       assert.equal(result, false);
     });
@@ -55,9 +53,9 @@ test('prompts are not loaded in non-TTY mode', async () => {
   }
 });
 
-test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', async () => {
+test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', { concurrency: false }, async (t) => {
   const prompts = require('../lib/prompts');
-  await withTTY(true, async () => {
+  await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
       const defaultResult = await prompts.confirm(createFakeInterface(['']), 'Question?', true);
       assert.equal(defaultResult, true);
@@ -74,9 +72,9 @@ test('confirm accepts blank input, parses yes/no answers, and retries on invalid
   });
 });
 
-test('selectOne retries until a valid numeric selection is provided', async () => {
+test('selectOne retries until a valid numeric selection is provided', { concurrency: false }, async (t) => {
   const prompts = require('../lib/prompts');
-  await withTTY(true, async () => {
+  await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
       const rl = createFakeInterface(['9', '2']);
       const result = await prompts.selectOne(
@@ -91,9 +89,9 @@ test('selectOne retries until a valid numeric selection is provided', async () =
   });
 });
 
-test('selectMany returns defaults on blank input and parses comma-separated selections', async () => {
+test('selectMany returns defaults on blank input and parses comma-separated selections', { concurrency: false }, async (t) => {
   const prompts = require('../lib/prompts');
-  await withTTY(true, async () => {
+  await withTTY(t, true, async () => {
     await withCapturedStdout(async () => {
       const defaultsResult = await prompts.selectMany(
         createFakeInterface(['']),
