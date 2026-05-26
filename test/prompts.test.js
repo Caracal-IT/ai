@@ -55,12 +55,20 @@ test('prompts are not loaded in non-TTY mode', async () => {
   }
 });
 
-test('confirm accepts blank input as the default answer', async () => {
+test('confirm accepts blank input, parses yes/no answers, and retries on invalid input', async () => {
   await withTTY(true, async () => {
     await withCapturedStdout(async () => {
-      const rl = createFakeInterface(['']);
-      const result = await prompts.confirm(rl, 'Question?', true);
-      assert.equal(result, true);
+      const defaultResult = await prompts.confirm(createFakeInterface(['']), 'Question?', true);
+      assert.equal(defaultResult, true);
+
+      const affirmativeResult = await prompts.confirm(createFakeInterface(['y']), 'Question?', false);
+      assert.equal(affirmativeResult, true);
+
+      const negativeResult = await prompts.confirm(createFakeInterface(['no']), 'Question?', true);
+      assert.equal(negativeResult, false);
+
+      const retryResult = await prompts.confirm(createFakeInterface(['maybe', 'yes']), 'Question?', false);
+      assert.equal(retryResult, true);
     });
   });
 });
