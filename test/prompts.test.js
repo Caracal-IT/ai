@@ -24,13 +24,12 @@ function createFakeInterface(answers) {
 }
 
 async function withCapturedStdout(callback) {
-  const originalWrite = process.stdout.write;
-  process.stdout.write = () => true;
+  const mockedWrite = test.mock.method(process.stdout, 'write', () => true);
 
   try {
     return await callback();
   } finally {
-    process.stdout.write = originalWrite;
+    mockedWrite.mock.restore();
   }
 }
 
