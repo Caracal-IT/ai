@@ -8,7 +8,7 @@ applyTo: "**"
 # Skill: Feature Documentation
 
 ## Description
-Create and maintain feature specifications as Markdown files in `docs/<category>/` or `docs/<category>/<sub-category>/`.
+Create and maintain feature specifications as Markdown files in `docs/features/<category>/` or `docs/features/<category>/<sub-category>/`.
 
 ## Required Workflow
 1. Confirm the request was understood before creating or changing the document.
@@ -17,7 +17,7 @@ Create and maintain feature specifications as Markdown files in `docs/<category>
 4. If the category is not provided, ask for it before creating the feature file.
 5. If an optional sub-category may be needed and was not provided, ask whether one should be used.
 6. Reuse an existing matching feature document when changing a feature instead of creating a duplicate.
-7. Store the file in `docs/<category>/<feature-name>.feature.md` or `docs/<category>/<sub-category>/<feature-name>.feature.md`.
+7. Store the file in `docs/features/<category>/<feature-name>.feature.md` or `docs/features/<category>/<sub-category>/<feature-name>.feature.md`.
 8. The file name should indicate the order in which the feature should be implemented. For example, `001-feature-name.feature.md` for the first feature, `002-next-feature.feature.md` for the second, and so on.
 9. The file name should indicate which features can be implemented in parallel. For example, `001-A-feature-name.feature.md` and `001-B-another-feature.feature.md` can be implemented in parallel, while `002-next-feature.feature.md` should be implemented after both `001` features are completed.
 10. When creating a new feature specification, follow the structure and tone of existing feature documents in the repository when available; otherwise, use the template in `templates/feature.template.md`.
