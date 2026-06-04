@@ -25,7 +25,7 @@ Create and maintain feature specifications as Markdown files in `docs/<category>
 12. After creating or updating the feature document, present it to the user and allow them to review and modify the file before proceeding with any implementation.
 13. After the user confirms the document is satisfactory, ask whether code implementation should proceed before writing any code.
 14. Update the `docs/index.md` file to include the new feature.
-15. Update the `docs/index.md` with a tree view of the implementation path, the critical path should be red. Use drawio to draw the tree view (embed it as a png image). Store it in `docs/assets/implementation-path.drawio.png`.
+15. Update the `docs/index.md` with a tree view of the implementation path, the critical path should be red. Use drawio to draw the tree view. Store it in `docs/assets/implementation-path.drawio.png`.
 
 ## Default Template
 
