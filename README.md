@@ -44,6 +44,8 @@ src/
 
 ## Usage
 
+The wizard uses interactive checkbox prompts (arrow keys + space + enter).
+
 ```bash
 # Initialise a new AI workspace (interactive wizard)
 npx github:Caracal-IT/ai init

@@ -18,6 +18,9 @@
   "scripts": {
     "test": "node --test"
   },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Caracal-IT/ai.git"
