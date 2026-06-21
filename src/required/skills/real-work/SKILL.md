@@ -10,6 +10,8 @@ conversation — is the source of truth: it records what to do, what's done, how
 was verified, and how to deploy. Any future agent can resume from it with zero
 prior context. Create a feature file using the feature-documentation skill.
 
+This skill **MUST** be used with the feature-documentation skill.
+
 **Use when** planning multi-step / multi-session work that may outlive the current
 session. Skip for trivial single-session tasks.
 
