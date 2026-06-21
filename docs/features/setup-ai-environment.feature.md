@@ -6,16 +6,16 @@
 - [x] Remove hard-coded architecture/testing/logging wizard steps.
 - [x] Drive wizard sections from `src/<category>/<item>/` folder structure.
 - [x] Add `src/required/` that is always installed.
-- [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.github/`.
-- [x] Keep pre-existing `.github/` files untouched on init (record them as `excluded`).
+- [x] Copy selected item files (`instructions`, `skills`, `agents`) into `.opencode/`.
+- [x] Keep pre-existing `.opencode/` files untouched on init (record them as `excluded`).
 - [x] Add `src/language/go/instructions/go.best-practices.instructions.md`.
 - [x] Add `src/language/kotlin/instructions/kotlin.best-practices.instructions.md`.
 - [x] Keep `generate` and add interactive `update` with pre-marked installed items.
 - [x] Add a required `feature-documentation` skill with a `.feature.md` demo template.
 - [x] Place `project.ai.json` at the project root (not inside `.ai/`).
-- [x] Track `excluded` (pre-existing / user-kept `.github/` files or folders) and `managed` (tool-owned files or folders) lists in `project.ai.json`.
-- [x] Remove `.github/{instructions,skills,agents}/` from `.gitignore` so all `.github/` files are source-controlled.
-- [x] During `update`: prompt about unknown `.github/` files — delete or add to `excluded`.
+- [x] Track `excluded` (pre-existing / user-kept `.opencode/` files or folders) and `managed` (tool-owned files or folders) lists in `project.ai.json`.
+- [x] Remove `.opencode/{instructions,skills,agents}/` from `.gitignore` so all `.opencode/` files are source-controlled.
+- [x] During `update`: prompt about unknown `.opencode/` files — delete or add to `excluded`.
 
 ## User Expectations
 

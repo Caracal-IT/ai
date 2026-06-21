@@ -10,10 +10,10 @@ This repository uses a structured AI context system.
     ↓
 AI CLI generator
     ↓
-.github/ (Copilot consumption layer)
+.opencode/ (AI consumption layer)
 ```
 
-> `.github` is **generated** — never edit it manually.  
+> `.opencode` is **generated** — never edit it manually.  
 > Run `npx github:Caracal-IT/ai generate` to rebuild it from `.ai/`.
 
 ---

@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
+const MANAGED_GROUPS = ['instructions', 'skills', 'agents', 'prompts'];
 const LEGACY_DIRS = new Set(MANAGED_GROUPS);
 
 function toLabel(value) {
@@ -31,7 +31,7 @@ function listFilesRecursive(dirPath, prefix = '') {
 }
 
 function filesForItem(itemDir) {
-  const files = { instructions: [], skills: [], agents: [] };
+  const files = { instructions: [], skills: [], agents: [], prompts: [] };
 
   for (const group of MANAGED_GROUPS) {
     const groupDir = path.join(itemDir, group);

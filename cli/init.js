@@ -9,7 +9,7 @@ const { getSourceCatalog } = require('./catalog');
  *
  * 1. Detect project type
  * 2. Run folder-driven wizard (or use defaults in non-TTY)
- * 3. Generate .github/ + README.md
+ * 3. Generate .opencode/ + README.md
  *
  * @param {string} targetDir – absolute path
  * @returns {Promise<{ created: string[], skipped: string[] }>}

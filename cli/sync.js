@@ -1,7 +1,7 @@
 const { syncProject } = require('./generate');
 
 /**
- * Sync command: regenerate .github/ in targetDir.
+ * Sync command: regenerate .opencode/ in targetDir.
  *
  * @param {string} targetDir – absolute path
  */

@@ -5,8 +5,8 @@ const { runWizard } = require('./wizard');
 const {
   addTrackedPath,
   generateProject,
-  githubTargetRelFor,
-  listGithubFiles,
+  opencodeTargetRelFor,
+  listOpencodeFiles,
   matchesTrackedEntry,
   normalizeSelections,
   resolveConfigPath,
@@ -34,26 +34,26 @@ async function update(targetDir) {
   const existingExcluded = existing.excluded || [];
   const knownManagedTargets = new Set();
 
-  for (const group of ['instructions', 'skills', 'agents']) {
+  for (const group of ['instructions', 'skills', 'agents', 'prompts']) {
     for (const relFile of catalog.required[group]) {
-      knownManagedTargets.add(githubTargetRelFor(group, relFile));
+      knownManagedTargets.add(opencodeTargetRelFor(group, relFile));
     }
   }
   for (const category of catalog.categories) {
     for (const item of category.items) {
-      for (const group of ['instructions', 'skills', 'agents']) {
+      for (const group of ['instructions', 'skills', 'agents', 'prompts']) {
         for (const relFile of item.files[group]) {
-          knownManagedTargets.add(githubTargetRelFor(group, relFile));
+          knownManagedTargets.add(opencodeTargetRelFor(group, relFile));
         }
       }
     }
   }
 
-  // Seed excluded with any pre-existing .github files that are not tracked in
+  // Seed excluded with any pre-existing .opencode files that are not tracked in
   // project.ai.json, so overwrite does not delete them before they can be
   // persisted.
   const seededExcluded = new Set(existingExcluded);
-  const unknownBeforeGenerate = listGithubFiles(targetDir).filter(
+  const unknownBeforeGenerate = listOpencodeFiles(targetDir).filter(
     (f) => !matchesTrackedEntry(f, existingManaged)
       && !matchesTrackedEntry(f, existingExcluded)
       && !knownManagedTargets.has(f),
@@ -70,12 +70,12 @@ async function update(targetDir) {
     { overwrite: true },
   );
 
-  // Find files in .github/ that are neither managed by the tool nor already
+  // Find files in .opencode/ that are neither managed by the tool nor already
   // in the excluded list, and automatically add them to the excluded list so
   // they are preserved on future updates.
   const managedEntries = result.managed;
   const excludedEntries = result.excluded;
-  const unknown = listGithubFiles(targetDir).filter(
+  const unknown = listOpencodeFiles(targetDir).filter(
     (f) => !matchesTrackedEntry(f, managedEntries) && !matchesTrackedEntry(f, excludedEntries),
   );
 

@@ -30,7 +30,7 @@ function fetchRemoteSkill(capabilityKey) {
  * Resolve skills for the given capability keys.
  * Tries the remote registry first; falls back to local generation.
  *
- * Returns a map of  capabilityKey → markdownContent.
+ * Returns a map of capabilityKey → markdownContent.
  *
  * @param {string[]} capabilityKeys
  * @param {string} typeKey  – project type key used for local fallback generation

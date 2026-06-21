@@ -5,20 +5,21 @@ const { ensureFile, writeFile } = require('../lib/fs');
 const { readme } = require('../lib/templates');
 const { getSourceCatalog } = require('./catalog');
 
-const MANAGED_GROUPS = ['instructions', 'skills', 'agents'];
-const MANAGED_GROUP_ROOTS = new Set(MANAGED_GROUPS.map((group) => path.posix.join('.github', group)));
+const MANAGED_GROUPS = ['instructions', 'skills', 'agents', 'prompts'];
+const MANAGED_GROUP_ROOTS = new Set(MANAGED_GROUPS.map((group) => path.posix.join('.opencode', group)));
 
 // Config lives at the project root; fall back to the legacy .ai/ location.
 const CONFIG_REL = 'project.ai.json';
 const LEGACY_CONFIG_REL = path.join('.ai', 'project.ai.json');
 
 // These entries were previously added to .gitignore to hide generated files.
-// We now want every .github/ file to be source-controlled, so we actively
+// We now want every .opencode/ file to be source-controlled, so we actively
 // remove them when encountered.
 const GITIGNORE_ENTRIES_TO_REMOVE = [
-  '.github/instructions/',
-  '.github/skills/',
-  '.github/agents/',
+  '.opencode/instructions/',
+  '.opencode/skills/',
+  '.opencode/agents/',
+  '.opencode/prompts/',
 ];
 
 /**
@@ -41,11 +42,12 @@ function buildProjectConfig(projectName, typeKey, config = {}) {
       version: 3,
       type: typeKey,
       selections: config.selections || {},
-      sourceRoot: '.github',
-      generatedRoot: '.github',
-      instructions: ['.github/instructions/'],
-      skills: ['.github/skills/'],
-      agents: ['.github/agents/'],
+      sourceRoot: '.opencode',
+      generatedRoot: '.opencode',
+      instructions: ['.opencode/instructions/'],
+      skills: ['.opencode/skills/'],
+      agents: ['.opencode/agents/'],
+      prompts: ['.opencode/prompts/'],
       excluded: config.excluded || [],
       managed: config.managed || [],
     },
@@ -79,7 +81,7 @@ function addTrackedPath(entries, relPath) {
   entries.add(normalizedPath);
 
   let currentDir = path.posix.dirname(normalizedPath);
-  while (currentDir && currentDir !== '.' && currentDir !== '.github') {
+  while (currentDir && currentDir !== '.' && currentDir !== '.opencode') {
     if (!MANAGED_GROUP_ROOTS.has(currentDir)) {
       entries.add(`${currentDir}/`);
     }
@@ -122,7 +124,7 @@ function ensureGitignore(targetDir) {
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
 
-  // Remove previously-managed directory ignore entries so that all .github/
+  // Remove previously-managed directory ignore entries so that all .opencode/
   // files are source-controlled going forward.
   const lines = existing.split(/\r?\n/);
   const filtered = lines.filter((line) => !GITIGNORE_ENTRIES_TO_REMOVE.includes(line));
@@ -153,39 +155,43 @@ function normalizeSelections(catalog, inputSelections = {}) {
   return normalized;
 }
 
-function githubTargetRelFor(group, relFile) {
+function opencodeTargetRelFor(group, relFile) {
   if (group === 'skills' && relFile.toLowerCase().endsWith('.md')) {
     const basename = path.posix.basename(relFile).toLowerCase();
     if (basename === 'skill.md') {
       // Already in folder-based format: keep path as-is
-      return path.posix.join('.github', group, relFile);
+      return path.posix.join('.opencode', group, relFile);
     }
     if (!relFile.includes('/')) {
       // Flat legacy format (e.g. my-skill.md) → my-skill/SKILL.md
       const parsed = path.posix.parse(relFile);
-      return path.posix.join('.github', group, parsed.name, 'SKILL.md');
+      return path.posix.join('.opencode', group, parsed.name, 'SKILL.md');
     }
     // Supporting file inside a skill folder (e.g. templates/…), copy as-is
-    return path.posix.join('.github', group, relFile);
+    return path.posix.join('.opencode', group, relFile);
   }
 
-  return path.posix.join('.github', group, relFile);
+  return path.posix.join('.opencode', group, relFile);
 }
 
-function copyItemToGithub(targetDir, sourceDir, files, overwrite, created, skipped, excluded = []) {
+function copyItemToOpencode(targetDir, sourceDir, files, overwrite, created, skipped, excluded = []) {
   const copied = [];
   for (const group of MANAGED_GROUPS) {
     for (const relFile of files[group]) {
       const content = fs.readFileSync(path.join(sourceDir, group, relFile), 'utf8');
-      const targetRel = githubTargetRelFor(group, relFile);
+      const targetRel = opencodeTargetRelFor(group, relFile);
       if (matchesTrackedEntry(targetRel, excluded)) {
         skipped.push(targetRel);
         continue;
       }
       const targetAbs = path.join(targetDir, targetRel);
-      const wrote = overwrite
-        ? (writeFile(targetAbs, content), true)
-        : ensureFile(targetAbs, content);
+      let wrote;
+      if (overwrite) {
+        writeFile(targetAbs, content);
+        wrote = true;
+      } else {
+        wrote = ensureFile(targetAbs, content);
+      }
 
       if (wrote) created.push(targetRel);
       else skipped.push(targetRel);
@@ -233,16 +239,16 @@ function removeEmptyDirectories(dirPath) {
   }
 }
 
-function clearManagedGithubDirectories(targetDir, previouslyManaged = [], excluded = []) {
+function clearManagedOpencodeDirectories(targetDir, previouslyManaged = [], excluded = []) {
   const insideGitRepo = isGitRepository(targetDir);
 
   for (const group of MANAGED_GROUPS) {
-    const groupDir = path.join(targetDir, '.github', group);
+    const groupDir = path.join(targetDir, '.opencode', group);
     if (!fs.existsSync(groupDir)) continue;
 
     const files = listFilesRecursive(groupDir);
     for (const relFile of files) {
-      const relPath = path.posix.join('.github', group, relFile);
+      const relPath = path.posix.join('.opencode', group, relFile);
       if (matchesTrackedEntry(relPath, excluded)) continue;
       // Always remove files that were previously managed by this tool, even if
       // they have since been committed to git. Only preserve git-tracked files
@@ -260,13 +266,13 @@ function clearManagedGithubDirectories(targetDir, previouslyManaged = [], exclud
 }
 
 /**
- * List every file currently in the .github/ directory tree (relative to targetDir).
- * Returns posix-style paths like ".github/copilot-instructions.md".
+ * List every file currently in the .opencode/ directory tree (relative to targetDir).
+ * Returns posix-style paths like ".opencode/copilot-instructions.md".
  */
-function listGithubFiles(targetDir) {
-  const githubDir = path.join(targetDir, '.github');
-  if (!fs.existsSync(githubDir)) return [];
-  return listFilesRecursive(githubDir).map((f) => path.posix.join('.github', f));
+function listOpencodeFiles(targetDir) {
+  const opencodeDir = path.join(targetDir, '.opencode');
+  if (!fs.existsSync(opencodeDir)) return [];
+  return listFilesRecursive(opencodeDir).map((f) => path.posix.join('.opencode', f));
 }
 
 async function generateProject(targetDir, projectName, typeKey, config, opts = {}) {
@@ -287,17 +293,17 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
     : [];
 
   // On the very first init (no overwrite, no existing config) record every
-  // file already present in .github/ so we never touch them automatically.
+  // file already present in .opencode/ so we never touch them automatically.
   const isFirstInit = !overwrite && !fs.existsSync(resolveConfigPath(targetDir));
   if (isFirstInit) {
-    const preExisting = listGithubFiles(targetDir);
+    const preExisting = listOpencodeFiles(targetDir);
     for (const f of preExisting) {
       addTrackedPath(excludedSet, f);
     }
   }
 
   if (overwrite) {
-    clearManagedGithubDirectories(targetDir, previouslyManaged, [...excludedSet]);
+    clearManagedOpencodeDirectories(targetDir, previouslyManaged, [...excludedSet]);
   }
 
   const selections = normalizeSelections(catalog, config.selections || {});
@@ -311,15 +317,19 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
     excluded: [...excludedSet].sort(),
     managed: [],
   });
-  const configWrote = overwrite
-    ? (writeFile(configAbs, configContent), true)
-    : ensureFile(configAbs, configContent);
+  let configWrote;
+  if (overwrite) {
+    writeFile(configAbs, configContent);
+    configWrote = true;
+  } else {
+    configWrote = ensureFile(configAbs, configContent);
+  }
   if (configWrote) created.push(CONFIG_REL);
   else skipped.push(CONFIG_REL);
 
   const requiredDir = path.join(catalog.sourceRoot, 'required');
   const managedSet = new Set();
-  for (const copied of copyItemToGithub(
+  for (const copied of copyItemToOpencode(
     targetDir,
     requiredDir,
     catalog.required,
@@ -335,7 +345,7 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
     const selected = new Set(selections[category.key] || []);
     for (const item of category.items) {
       if (!selected.has(item.key)) continue;
-      for (const copied of copyItemToGithub(
+      for (const copied of copyItemToOpencode(
         targetDir,
         item.sourceDir,
         item.files,
@@ -357,9 +367,13 @@ async function generateProject(targetDir, projectName, typeKey, config, opts = {
   const readmeRel = 'README.md';
   const readmeAbs = path.join(targetDir, readmeRel);
   const readmeContent = readme(projectName, typeKey, { selections });
-  const readmeWrote = overwrite
-    ? (writeFile(readmeAbs, readmeContent), true)
-    : ensureFile(readmeAbs, readmeContent);
+  let readmeWrote;
+  if (overwrite) {
+    writeFile(readmeAbs, readmeContent);
+    readmeWrote = true;
+  } else {
+    readmeWrote = ensureFile(readmeAbs, readmeContent);
+  }
   if (readmeWrote) created.push(readmeRel);
   else skipped.push(readmeRel);
 
@@ -387,8 +401,8 @@ async function syncProject(targetDir) {
 module.exports = {
   addTrackedPath,
   generateProject,
-  githubTargetRelFor,
-  listGithubFiles,
+  opencodeTargetRelFor,
+  listOpencodeFiles,
   matchesTrackedEntry,
   normalizeSelections,
   compactTrackedEntries,
