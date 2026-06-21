@@ -51,10 +51,14 @@ test('src markdown items include required front matter fields', () => {
 
     if (rel.startsWith('skills/') || rel.includes('/skills/')) {
       assert.ok(frontMatter.whenToUse, `${rel} is missing whenToUse`);
-      // For folder-based skills (SKILL.md), the expected name is the parent folder name
       const basename = path.posix.basename(rel).toLowerCase();
+      const dir = path.posix.dirname(rel);
+      const parent = path.posix.basename(dir);
+      const grandparent = path.posix.basename(path.posix.dirname(dir));
+      // For folder-based skills (SKILL.md), use the item folder name (grandparent)
+      // when parent is a known group directory; otherwise use parent folder name
       const expected = basename === 'skill.md'
-        ? path.posix.basename(path.posix.dirname(rel))
+        ? (['skills', 'instructions', 'agents', 'prompts'].includes(parent) ? grandparent : parent)
         : path.posix.parse(rel).name;
       assert.equal(
         frontMatter.name,

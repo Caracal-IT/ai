@@ -7,7 +7,9 @@ const LEGACY_DIRS = new Set(MANAGED_GROUPS);
 function toLabel(value) {
   return value
     .replace(/[._-]+/g, ' ')
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+    .split(' ')
+    .map((word) => word.length <= 3 ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function listFilesRecursive(dirPath, prefix = '') {

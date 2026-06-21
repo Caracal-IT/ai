@@ -1,3 +1,10 @@
+---
+name: ai-instructions
+description: Core system instructions, engineering rules, and repository modification protocol for AI agents
+applyTo: "*.{ts,js,kt,go,py}"
+whenToUse: Apply to any repository that requires AI agent behavioral rules, engineering constraints, and file modification protocols
+---
+
 # Opencode System Instructions
 
 ## Project: {{projectName}}
