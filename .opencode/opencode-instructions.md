@@ -37,7 +37,7 @@ The system workflow for **scaffolded projects** is:
 ```text
 .opencode/ (source of truth)
     ↓
-opencode CLI generator  (npx opencode generate)
+opencode CLI generator  (npx github:Caracal-IT/ai generate)
     ↓
 .opencode/ (AI consumption layer)
 ```

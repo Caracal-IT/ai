@@ -14,7 +14,7 @@ opencode generator
 ```
 
 > `.opencode` is **generated** — never edit it manually.  
-> Run `npx opencode generate` to rebuild it.
+> Run `npx github:Caracal-IT/ai generate` to rebuild it.
 
 ---
 
