@@ -25,8 +25,8 @@ test('required feature documentation skill describes the requested workflow and 
   assert.match(content, /Confirm the request was understood/i);
   assert.match(content, /ask for it before creating the feature file/i);
   assert.match(content, /optional sub-category/i);
-  assert.match(content, /docs\/<category>\/<feature-name>\.feature\.md/);
-  assert.match(content, /docs\/<category>\/<sub-category>\/<feature-name>\.feature\.md/);
+  assert.match(content, /docs\/features\/<category>\/<feature-name>\.feature\.md/);
+  assert.match(content, /docs\/features\/<category>\/<sub-category>\/<feature-name>\.feature\.md/);
   assert.match(content, /## Default Template/);
   assert.match(content, /templates\/feature\.template\.md/);
   assert.match(content, /always end the file with `\.feature\.md`/);
