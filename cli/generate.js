@@ -267,7 +267,7 @@ function clearManagedOpencodeDirectories(targetDir, previouslyManaged = [], excl
 
 /**
  * List every file currently in the .opencode/ directory tree (relative to targetDir).
- * Returns posix-style paths like ".opencode/copilot-instructions.md".
+ * Returns posix-style paths like ".opencode/instructions/system.md".
  */
 function listOpencodeFiles(targetDir) {
   const opencodeDir = path.join(targetDir, '.opencode');

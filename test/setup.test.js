@@ -9,29 +9,29 @@ const { parseFrontMatter } = require('../test-helpers/front-matter');
 
 const cliPath = path.resolve(__dirname, '..', 'bin', 'ai.js');
 
-function githubManagedPath(fileGroup, relFile) {
+function opencodeManagedPath(fileGroup, relFile) {
   const parts = relFile.split('/');
-  if (fileGroup !== 'skills') return path.join('.github', fileGroup, ...parts);
+  if (fileGroup !== 'skills') return path.join('.opencode', fileGroup, ...parts);
 
   const basename = path.posix.basename(relFile).toLowerCase();
   if (basename === 'skill.md') {
     // Already folder-based: keep as-is
-    return path.join('.github', 'skills', ...parts);
+    return path.join('.opencode', 'skills', ...parts);
   }
   if (!relFile.includes('/')) {
     // Flat legacy format → folder/SKILL.md
     const parsed = path.posix.parse(relFile);
-    return path.join('.github', 'skills', parsed.name, 'SKILL.md');
+    return path.join('.opencode', 'skills', parsed.name, 'SKILL.md');
   }
   // Supporting file inside a skill folder, copy as-is
-  return path.join('.github', 'skills', ...parts);
+  return path.join('.opencode', 'skills', ...parts);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    init command
    ──────────────────────────────────────────────────────────────────────────── */
 
-test('init creates .github/ structure without creating .ai/', () => {
+test('init creates .opencode/ structure without creating .ai/', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-'));
   const output = execFileSync(process.execPath, [cliPath, 'init', projectDir], {
     encoding: 'utf8',
@@ -45,10 +45,10 @@ test('init creates .github/ structure without creating .ai/', () => {
   // .ai/ must not be created
   assert.equal(fs.existsSync(path.join(projectDir, '.ai')), false);
 
-  // .github/ generated layer
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
+  // .opencode/ generated layer
+  assert.equal(fs.existsSync(path.join(projectDir, '.opencode', 'skills', 'feature-documentation', 'SKILL.md')), true);
   const generatedSkill = fs.readFileSync(
-    path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md'),
+    path.join(projectDir, '.opencode', 'skills', 'feature-documentation', 'SKILL.md'),
     'utf8',
   );
   const skillFrontMatter = parseFrontMatter(generatedSkill);
@@ -57,12 +57,12 @@ test('init creates .github/ structure without creating .ai/', () => {
   assert.ok(skillFrontMatter.description);
   assert.ok(skillFrontMatter.whenToUse);
 
-  // .github/ managed files must NOT be in .gitignore (they are source-controlled)
+  // .opencode/ managed files must NOT be in .gitignore (they are source-controlled)
   const gitignorePath = path.join(projectDir, '.gitignore');
   const gitignore = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
-  assert.doesNotMatch(gitignore, /^\.github\/instructions\/$/m);
-  assert.doesNotMatch(gitignore, /^\.github\/skills\/$/m);
-  assert.doesNotMatch(gitignore, /^\.github\/agents\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/instructions\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/skills\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/agents\/$/m);
 
   // README
   assert.equal(fs.existsSync(path.join(projectDir, 'README.md')), true);
@@ -80,15 +80,15 @@ test('init creates .github/ structure without creating .ai/', () => {
   assert.ok(Array.isArray(config.excluded));
   assert.ok(Array.isArray(config.managed));
 
-  // Managed files must include the generated .github/ files
-  assert.ok(config.managed.some((f) => f.startsWith('.github/')));
+  // Managed files must include the generated .opencode/ files
+  assert.ok(config.managed.some((f) => f.startsWith('.opencode/')));
 });
 
 test('init preserves existing files when run again', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-existing-'));
   const skillPath = path.join(
     projectDir,
-    '.github',
+    '.opencode',
     'skills',
     'feature-documentation',
     'SKILL.md',
@@ -121,14 +121,14 @@ test('init defaults to current directory when no target given', () => {
    generate / update command
    ──────────────────────────────────────────────────────────────────────────── */
 
-test('generate rebuilds .github/', () => {
+test('generate rebuilds .opencode/', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-generate-'));
 
   // Initialise first
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   // Remove the generated layer to verify generate recreates it
-  fs.rmSync(path.join(projectDir, '.github'), { recursive: true, force: true });
+  fs.rmSync(path.join(projectDir, '.opencode'), { recursive: true, force: true });
 
   const output = execFileSync(
     process.execPath,
@@ -136,8 +136,8 @@ test('generate rebuilds .github/', () => {
     { encoding: 'utf8' },
   );
 
-  assert.match(output, /\.github\/ regenerated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
+  assert.match(output, /\.opencode\/ regenerated/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.opencode', 'skills', 'feature-documentation', 'SKILL.md')), true);
 });
 
 test('wizard catalog includes capabilities section', () => {
@@ -227,31 +227,31 @@ test('update pre-marks installed items, recopies them, and removes deselected fi
   config.selections = { [category.key]: [item.key] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
-  fs.rmSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile)), { force: true });
+  fs.rmSync(path.join(projectDir, opencodeManagedPath(fileGroup, selectedFile)), { force: true });
 
   const output = execFileSync(process.execPath, [cliPath, 'update', projectDir], {
     encoding: 'utf8',
   });
 
   assert.match(output, /AI selections updated/);
-  assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), true);
+  assert.equal(fs.existsSync(path.join(projectDir, opencodeManagedPath(fileGroup, selectedFile))), true);
 
   config.selections = { [category.key]: [] };
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
-  assert.equal(fs.existsSync(path.join(projectDir, githubManagedPath(fileGroup, selectedFile))), false);
+  assert.equal(fs.existsSync(path.join(projectDir, opencodeManagedPath(fileGroup, selectedFile))), false);
 });
 
-test('update keeps tracked files under managed .github directories', () => {
+test('update keeps tracked files under managed .opencode directories', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-tracked-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
-  const trackedFile = path.join(projectDir, '.github', 'skills', 'tracked.md');
+  const trackedFile = path.join(projectDir, '.opencode', 'skills', 'tracked.md');
   fs.mkdirSync(path.dirname(trackedFile), { recursive: true });
   fs.writeFileSync(trackedFile, '# keep\n', 'utf8');
-  execFileSync('git', ['add', '-f', '.github/skills/tracked.md'], { cwd: projectDir, stdio: 'ignore' });
+  execFileSync('git', ['add', '-f', '.opencode/skills/tracked.md'], { cwd: projectDir, stdio: 'ignore' });
 
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
@@ -287,12 +287,12 @@ test('update removes git-tracked managed files when item is deselected', () => {
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
-  const managedFilePath = path.join(projectDir, githubManagedPath(fileGroup, selectedFile));
+  const managedFilePath = path.join(projectDir, opencodeManagedPath(fileGroup, selectedFile));
   assert.equal(fs.existsSync(managedFilePath), true, 'file must exist after selection');
 
   // Simulate the user committing the generated file to git
   execFileSync('git', ['init'], { cwd: projectDir, stdio: 'ignore' });
-  execFileSync('git', ['add', '-f', '--', githubManagedPath(fileGroup, selectedFile)], { cwd: projectDir, stdio: 'ignore' });
+  execFileSync('git', ['add', '-f', '--', opencodeManagedPath(fileGroup, selectedFile)], { cwd: projectDir, stdio: 'ignore' });
 
   // Deselect the item and run update — file must be removed even though it is git-tracked
   config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -304,7 +304,7 @@ test('update removes git-tracked managed files when item is deselected', () => {
 
   // project.ai.json managed list must not contain the removed file
   config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const managedRel = githubManagedPath(fileGroup, selectedFile).split(path.sep).join('/');
+  const managedRel = opencodeManagedPath(fileGroup, selectedFile).split(path.sep).join('/');
   assert.equal(
     config.managed.includes(managedRel),
     false,
@@ -316,20 +316,20 @@ test('update removes git-tracked managed files when item is deselected', () => {
    project.ai.json root placement and excluded/managed tracking
    ──────────────────────────────────────────────────────────────────────────── */
 
-test('init records pre-existing .github/ files in excluded list', () => {
+test('init records pre-existing .opencode/ files in excluded list', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-excluded-'));
 
-  // Place a pre-existing file in .github/ before init
-  const preExistingFile = path.join(projectDir, '.github', 'manual', 'copilot-instructions.md');
+  // Place a pre-existing file in .opencode/ before init
+  const preExistingFile = path.join(projectDir, '.opencode', 'manual', 'opencode-instructions.md');
   fs.mkdirSync(path.dirname(preExistingFile), { recursive: true });
   fs.writeFileSync(preExistingFile, '# Pre-existing\n', 'utf8');
 
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
-  assert.ok(config.excluded.includes('.github/manual/'), 'pre-existing folder must be excluded');
+  assert.ok(config.excluded.includes('.opencode/manual/'), 'pre-existing folder must be excluded');
   assert.equal(
-    config.excluded.includes('.github/manual/copilot-instructions.md'),
+    config.excluded.includes('.opencode/manual/opencode-instructions.md'),
     false,
     'excluded list should prefer the folder over every child file',
   );
@@ -337,7 +337,7 @@ test('init records pre-existing .github/ files in excluded list', () => {
   assert.equal(fs.readFileSync(preExistingFile, 'utf8'), '# Pre-existing\n');
 });
 
-test('init records generated .github/ files in managed list', () => {
+test('init records generated .opencode/ files in managed list', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-init-managed-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
@@ -345,47 +345,47 @@ test('init records generated .github/ files in managed list', () => {
   assert.ok(Array.isArray(config.managed));
   assert.ok(config.managed.length > 0, 'managed list must be non-empty after init');
   assert.ok(
-    config.managed.includes('.github/skills/feature-documentation/'),
+    config.managed.includes('.opencode/skills/feature-documentation/'),
     'managed list must include generated folders',
   );
   assert.equal(
-    config.managed.includes('.github/skills/feature-documentation/SKILL.md'),
+    config.managed.includes('.opencode/skills/feature-documentation/SKILL.md'),
     false,
     'managed list should prefer the generated folder over every child file',
   );
   assert.ok(
-    config.managed.every((f) => f.startsWith('.github/')),
-    'all managed entries must be under .github/',
+    config.managed.every((f) => f.startsWith('.opencode/')),
+    'all managed entries must be under .opencode/',
   );
 });
 
-test('ensureGitignore removes old .github/ ignore entries for source control', () => {
+test('ensureGitignore removes old .opencode/ ignore entries for source control', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-gitignore-migrate-'));
   const gitignorePath = path.join(projectDir, '.gitignore');
 
   // Simulate an old-style .gitignore with the entries we should remove
   fs.writeFileSync(
     gitignorePath,
-    'node_modules/\n.github/instructions/\n.github/skills/\n.github/agents/\n',
+    'node_modules/\n.opencode/instructions/\n.opencode/skills/\n.opencode/agents/\n',
     'utf8',
   );
 
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   const gitignore = fs.readFileSync(gitignorePath, 'utf8');
-  assert.doesNotMatch(gitignore, /^\.github\/instructions\/$/m);
-  assert.doesNotMatch(gitignore, /^\.github\/skills\/$/m);
-  assert.doesNotMatch(gitignore, /^\.github\/agents\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/instructions\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/skills\/$/m);
+  assert.doesNotMatch(gitignore, /^\.opencode\/agents\/$/m);
   // Other entries must be preserved
   assert.match(gitignore, /node_modules\//);
 });
 
-test('update adds unknown .github/ files to excluded automatically', () => {
+test('update adds unknown .opencode/ files to excluded automatically', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-unknown-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
   // Simulate a manually added file (not managed by the tool)
-  const manualFile = path.join(projectDir, '.github', 'copilot-instructions.md');
+  const manualFile = path.join(projectDir, '.opencode', 'opencode-instructions.md');
   fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
 
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
@@ -393,17 +393,17 @@ test('update adds unknown .github/ files to excluded automatically', () => {
   const config = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.ai.json'), 'utf8'));
   // Unknown files are automatically added to excluded and never deleted.
   assert.ok(
-    config.excluded.includes('.github/copilot-instructions.md'),
+    config.excluded.includes('.opencode/opencode-instructions.md'),
     'unknown file must be added to excluded list',
   );
   assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
 });
 
-test('update excludes unknown files under managed .github folders', () => {
+test('update excludes unknown files under managed .opencode folders', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-unknown-managed-group-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
-  const manualFile = path.join(projectDir, '.github', 'skills', 'manual', 'SKILL.md');
+  const manualFile = path.join(projectDir, '.opencode', 'skills', 'manual', 'SKILL.md');
   fs.mkdirSync(path.dirname(manualFile), { recursive: true });
   fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
 
@@ -411,26 +411,26 @@ test('update excludes unknown files under managed .github folders', () => {
 
   const configPath = path.join(projectDir, 'project.ai.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  assert.ok(config.excluded.includes('.github/skills/manual/'));
+  assert.ok(config.excluded.includes('.opencode/skills/manual/'));
   assert.equal(
-    config.managed.includes('.github/skills/manual/'),
+    config.managed.includes('.opencode/skills/manual/'),
     false,
-    'unknown .github items must not be promoted to managed',
+    'unknown .opencode items must not be promoted to managed',
   );
   assert.equal(fs.existsSync(manualFile), true, 'manually added file must not be deleted');
 });
 
-test('update preserves excluded folders inside managed .github directories', () => {
+test('update preserves excluded folders inside managed .opencode directories', () => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-update-excluded-folder-'));
   execFileSync(process.execPath, [cliPath, 'init', projectDir], { encoding: 'utf8' });
 
-  const manualFile = path.join(projectDir, '.github', 'skills', 'manual', 'SKILL.md');
+  const manualFile = path.join(projectDir, '.opencode', 'skills', 'manual', 'SKILL.md');
   fs.mkdirSync(path.dirname(manualFile), { recursive: true });
   fs.writeFileSync(manualFile, '# Manual\n', 'utf8');
 
   const configPath = path.join(projectDir, 'project.ai.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  config.excluded = ['.github/skills/manual/'];
+  config.excluded = ['.opencode/skills/manual/'];
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
@@ -438,9 +438,9 @@ test('update preserves excluded folders inside managed .github directories', () 
   const updated = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   assert.equal(fs.existsSync(manualFile), true, 'excluded folder contents must stay untouched');
   assert.equal(fs.readFileSync(manualFile, 'utf8'), '# Manual\n');
-  assert.ok(updated.excluded.includes('.github/skills/manual/'));
+  assert.ok(updated.excluded.includes('.opencode/skills/manual/'));
   assert.equal(
-    updated.excluded.includes('.github/skills/manual/SKILL.md'),
+    updated.excluded.includes('.opencode/skills/manual/SKILL.md'),
     false,
     'folder exclusions must be honored without expanding to every child file',
   );
@@ -464,7 +464,7 @@ test('update removes git-tracked managed files when managed entry is stored as a
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   execFileSync(process.execPath, [cliPath, 'update', projectDir], { encoding: 'utf8' });
 
-  const managedRel = githubManagedPath('skills', selectedFile).split(path.sep).join('/');
+  const managedRel = opencodeManagedPath('skills', selectedFile).split(path.sep).join('/');
   const managedFolderRel = `${path.posix.dirname(managedRel)}/`;
   const managedFilePath = path.join(projectDir, managedRel);
   assert.equal(fs.existsSync(managedFilePath), true, 'file must exist after selection');
@@ -495,16 +495,16 @@ test('backward compat: generate still works when only legacy .ai/project.ai.json
   fs.mkdirSync(path.dirname(legacyConfig), { recursive: true });
   fs.renameSync(rootConfig, legacyConfig);
 
-  // Remove .github/ so generate must recreate it
-  fs.rmSync(path.join(projectDir, '.github'), { recursive: true, force: true });
+  // Remove .opencode/ so generate must recreate it
+  fs.rmSync(path.join(projectDir, '.opencode'), { recursive: true, force: true });
 
   const output = execFileSync(
     process.execPath,
     [cliPath, 'generate', projectDir],
     { encoding: 'utf8' },
   );
-  assert.match(output, /\.github\/ regenerated/);
-  assert.equal(fs.existsSync(path.join(projectDir, '.github', 'skills', 'feature-documentation', 'SKILL.md')), true);
+  assert.match(output, /\.opencode\/ regenerated/);
+  assert.equal(fs.existsSync(path.join(projectDir, '.opencode', 'skills', 'feature-documentation', 'SKILL.md')), true);
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────

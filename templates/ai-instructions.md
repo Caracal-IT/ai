@@ -1,4 +1,4 @@
-# Copilot AI System Instructions
+# Opencode System Instructions
 
 ## Project: {{projectName}}
 ## Stack: {{stack}}
@@ -6,15 +6,15 @@
 This repository uses a structured AI context system.
 
 ```text
-.ai/ (source of truth)
+.opencode/ (source of truth)
     ↓
-AI CLI generator
+opencode generator
     ↓
 .opencode/ (AI consumption layer)
 ```
 
 > `.opencode` is **generated** — never edit it manually.  
-> Run `npx github:Caracal-IT/ai generate` to rebuild it from `.ai/`.
+> Run `npx opencode generate` to rebuild it.
 
 ---
 

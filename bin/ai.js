@@ -12,8 +12,8 @@ function printUsage() {
     '',
     'Commands:',
     '  init      Scaffold a new AI workspace (runs the interactive wizard)',
-    '  generate  Regenerate .github/',
-    '  update    Update selections and recopy into .github/',
+    '  generate  Regenerate .opencode/',
+    '  update    Update selections and recopy into .opencode/',
     '',
   ].join('\n'));
 }
@@ -41,7 +41,7 @@ async function main(argv = process.argv.slice(2)) {
     case 'generate': {
       const { sync } = require('../cli/sync');
       const result = await sync(targetDir);
-      console.log(`\n✔  .github/ regenerated at ${targetDir}`);
+      console.log(`\n✔  .opencode/ regenerated at ${targetDir}`);
       console.log(`   Written ${result.created.length} file(s).`);
       return 0;
     }

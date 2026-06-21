@@ -1,10 +1,10 @@
-# Copilot AI System Instructions (Project Generator Mode)
+# Opencode System Instructions (Generator Mode)
 
-This repository is the **AI CLI tool** that scaffolds structured AI workspaces.
-It uses `src/` as the source of truth for its own AI context and `.github/` as
-the generated Copilot consumption layer.
+This repository is the **opencode CLI tool** that scaffolds structured AI workspaces.
+It uses `src/` as the source of truth for its own AI context and `.opencode/` as
+the generated AI consumption layer.
 
-Copilot MUST follow these rules when generating code, documentation, or
+Opencode MUST follow these rules when generating code, documentation, or
 AI-related structure for this repository.
 
 ---
@@ -18,14 +18,15 @@ lib/          Shared utilities (fs, git, prompts, templates, project-type)
 src/          Source-of-truth AI context for THIS repository
   ├── instructions/
   ├── skills/
-  └── agents/
+  ├── agents/
+  └── prompts/
 templates/    Starter file templates copied into scaffolded projects
 test/         Automated tests (run with: npm test)
 ```
 
 > **Key difference from scaffolded projects:**  
-> This repository uses `src/` (not `.ai/`) as its own source of truth.  
-> Scaffolded user projects use `.ai/` as their source of truth.
+> This repository uses `src/` (not `.opencode/`) as its own source of truth.  
+> Scaffolded user projects use `.opencode/` as their source of truth.
 
 ---
 
@@ -34,14 +35,14 @@ test/         Automated tests (run with: npm test)
 The system workflow for **scaffolded projects** is:
 
 ```text
-.ai/ (source of truth)
+.opencode/ (source of truth)
     ↓
-AI CLI generator  (npx github:Caracal-IT/ai generate)
+opencode CLI generator  (npx opencode generate)
     ↓
-.github/ (Copilot consumption layer)
+.opencode/ (AI consumption layer)
 ```
 
-Copilot MUST assume `.github` in any scaffolded project is **generated** and
+Opencode MUST assume `.opencode` in any scaffolded project is **generated** and
 never manually edited.
 
 ---
@@ -69,14 +70,11 @@ When asked to initialize, scaffold, or explain a project that uses this CLI:
    - Optional capabilities (Authentication, Database, Redis, REST, GraphQL, Docker, Kafka)
 
 3. **Generate or update** in the target project:
-   - `.ai/project.ai.json`
-   - `.ai/instructions/`
-   - `.ai/skills/`
-   - `.ai/agents/`
-   - `.github/copilot-instructions.md`
-   - `.github/instructions/`
-   - `.github/skills/`
-   - `.github/agents/`
+   - `.opencode/agent.json`
+   - `.opencode/instructions/`
+   - `.opencode/skills/`
+   - `.opencode/agents/`
+   - `.opencode/prompts/`
    - `README.md`
 
 ---
@@ -86,7 +84,7 @@ When asked to initialize, scaffold, or explain a project that uses this CLI:
 Every initialization action MUST generate a complete `README.md` that includes:
 
 1. **Project Overview** – what the project does, its architecture, AI system purpose.
-2. **AI System Explanation** – `.ai/` = source of truth, `.github/` = generated context.
+2. **AI System Explanation** – `.opencode/` = source of truth and generated context.
 3. **Initialization Flow** – step-by-step wizard description.
 4. **CLI Commands** – documented usage of `init`, `generate`, `update`.
 
