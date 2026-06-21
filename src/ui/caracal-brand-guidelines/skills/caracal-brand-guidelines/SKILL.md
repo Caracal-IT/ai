@@ -2,7 +2,7 @@
 name: caracal-brand-guidelines
 description: Applies Caracal's official brand colors and typography to any artifact that benefits from having Caracal's look-and-feel. Use it when brand colors, style guidelines, visual formatting, or company design standards apply.
 whenToUse: Use when brand colors, style guidelines, visual formatting, or company design standards apply
-applyTo: "**/*"
+applyTo: "*.{html,css,ts,tsx,js,jsx}"
 ---
 
 # Caracal Brand Styling
