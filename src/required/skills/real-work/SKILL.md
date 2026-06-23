@@ -9,9 +9,10 @@ whenToUse: Use when planning a multi-step task or working in plan mode and you n
 Turn planning into a durable, resumable artifact. The plan file — not the
 conversation — is the source of truth: it records what to do, what's done, how it
 was verified, and how to deploy. Any future agent can resume from it with zero
-prior context. Create a feature file using the feature-documentation skill.
+prior context.
 
-This skill **MUST** be used with the feature-documentation skill.
+This skill **MUST** be used with the feature-documentation skill. The feature-documentation skill
+provides the template for the plan file, and this skill provides the process for filling it out.
 
 **Use when** planning multi-step / multi-session work that may outlive the current
 session. Skip for trivial single-session tasks.
